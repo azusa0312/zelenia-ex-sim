@@ -1,0 +1,1432 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>極澤蓮尼亞練習場</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: full-bleed 3D arena; HUD floats at the edges like an in-game UI. Single dark look on purpose (night arena). */
+:root{
+  --night:#0d0910; --panel:rgba(24,14,22,.86); --line:rgba(233,196,106,.3);
+  --rose:#e8506e; --gold:#e9c46a; --ink:#f4eaef; --mute:#bba7b4;
+  --close:#ff7ab8; --far:#a77bff; --good:#5fd39a; --bad:#ff6161; --sky:#5fd0ff;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--body);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;touch-action:none}
+.hud{position:fixed;z-index:5}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+
+#panel{top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));width:min(300px,calc(100vw - 32px));padding:12px 14px;max-height:calc(100% - 110px);overflow:auto}
+#panel summary{list-style:none;cursor:pointer;display:grid;gap:2px}
+#panel summary::-webkit-details-marker{display:none}
+.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--rose);font-weight:700}
+.ttl{font-family:var(--display);font-weight:900;font-size:24px;color:var(--gold);line-height:1.15}
+.ttl small{font-family:var(--mono);font-size:11px;color:var(--mute);font-weight:500;letter-spacing:.04em;margin-left:6px}
+.fields{display:grid;gap:10px;margin-top:12px}
+.fields label{display:grid;gap:4px;font-size:12.5px;color:var(--mute)}
+.fields label.chk{display:flex;align-items:center;gap:8px;color:var(--ink)}
+.fields output{color:var(--gold);font-family:var(--mono);font-size:12px;margin-left:4px}
+.group{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.group h3{margin:0;font-size:12px;letter-spacing:.12em;color:var(--gold);font-weight:700}
+select{width:100%;background:#1d1219;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px}
+input[type=range]{width:100%;accent-color:var(--rose)}
+input[type=checkbox]{accent-color:var(--rose);width:16px;height:16px}
+#go{width:100%;margin-top:12px;background:var(--rose);color:#1a0810;border:0;border-radius:8px;padding:10px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+#go:hover{filter:brightness(1.1)}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.note{font-size:11px;color:var(--mute);margin:8px 0 0;line-height:1.6}
+.rule{margin:10px 0 0;padding:8px 10px;border:1px dashed var(--line);border-radius:8px;font-size:12.5px;line-height:1.7}
+.rule b{color:var(--gold);font-family:var(--display)}
+
+#timeline{top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));padding:10px 12px;font-size:12px;display:grid;gap:3px;min-width:190px}
+#timeline h4{margin:0 0 4px;font-size:11px;letter-spacing:.14em;color:var(--mute);font-weight:700}
+#timeline .ev{display:flex;gap:8px;align-items:baseline;color:var(--mute)}
+#timeline .ev i{font-style:normal;font-family:var(--mono);font-size:10.5px;width:3.4em;text-align:right;opacity:.7}
+#timeline .ev.now{color:var(--gold);font-weight:700}
+#timeline .ev.ok{color:var(--good)}
+#timeline .ev.ng{color:var(--bad)}
+
+#cast{top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(380px,calc(100vw - 32px));padding:10px 14px;text-align:center}
+.castname{font-family:var(--display);font-size:15px;letter-spacing:.04em}
+.castname span{font-family:var(--mono);font-size:11px;color:var(--mute);margin-left:6px}
+.bar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+.fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--rose))}
+.seq{display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.seq:empty{display:none}
+.chip{font-family:var(--mono);font-size:12px;padding:2px 9px;border-radius:999px;color:#140910;font-weight:700}
+.chip.close{background:var(--close)}.chip.far{background:var(--far)}
+.chip.unk{background:rgba(255,255,255,.12);color:var(--mute)}
+.chip.now{outline:2px solid var(--gold);outline-offset:1px}
+.chip.done{opacity:.35}
+#advice{margin-top:6px;font-size:13px;color:var(--gold)}
+#advice:empty{display:none}
+
+#me{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));padding:9px 12px;font-size:13px;font-variant-numeric:tabular-nums;display:grid;gap:3px}
+#me .deb{color:var(--bad);font-weight:700}
+#me .rec{color:var(--mute);font-size:12px}
+#help{right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));font-size:12px;color:var(--mute);padding:8px 12px;max-width:min(360px,calc(100vw - 32px))}
+#help kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--ink)}
+
+#banner{top:36%;left:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 32px));padding:18px 22px;text-align:center;max-height:60%;overflow:auto}
+#banner h2{font-family:var(--display);font-size:26px;margin:0 0 6px;text-wrap:balance}
+#banner p{margin:4px 0;font-size:14px;line-height:1.7}
+#banner .sub{color:var(--mute);font-size:12.5px}
+#banner.ok{border-color:var(--good)} #banner.ok h2{color:var(--good)}
+#banner.ng{border-color:var(--bad)} #banner.ng h2{color:var(--bad)}
+#banner.intro h2{color:var(--gold)}
+#flash{inset:0;pointer-events:none;background:radial-gradient(circle,rgba(232,80,110,0) 30%,rgba(232,80,110,.45));opacity:0;transition:opacity .5s;z-index:4}
+
+#joy{width:110px;height:110px;border-radius:50%;border:1px solid var(--line);background:rgba(24,14,22,.4);pointer-events:none}
+#knob{position:absolute;left:32px;top:32px;width:46px;height:46px;border-radius:50%;background:rgba(233,196,106,.55)}
+#err{inset:0;display:grid;place-items:center;background:var(--night);padding:24px;text-align:center;line-height:1.8;z-index:20}
+
+@media (max-width:1100px){ #cast{top:calc(14px + env(safe-area-inset-top,0px));left:calc(max(16px,env(safe-area-inset-left,0px)) + 316px);transform:none;width:auto;right:calc(max(16px,env(safe-area-inset-right,0px)) + 214px)} }
+@media (max-width:900px){ #timeline{display:none} #cast{right:max(16px,env(safe-area-inset-right,0px))} }
+@media (max-width:720px){
+  #cast{top:calc(84px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px))}
+  #panel[open]{z-index:7}
+  #help{display:none}
+  .ttl{font-size:20px}
+}
+@media (prefers-reduced-motion:reduce){ #flash{transition:none} }
+</style>
+
+</head>
+<body>
+<div id="stage"></div>
+<div id="flash" class="hud"></div>
+
+<details id="panel" class="hud box" open>
+  <summary>
+    <span class="eyebrow">FF14 · 歼殛战練習場</span>
+    <span class="ttl">極 澤蓮尼亞<small>Recollection (Extreme)</small></span>
+  </summary>
+  <div class="fields">
+    <label>練習範圍
+      <select id="mode">
+        <option value="all" selected>全程（依序）</option>
+        <option value="shock">Shock ＋ 聖光塔</option>
+        <option value="specter">Specter of the Lost 死刑連線</option>
+        <option value="esc">凌空錯 Escelons' Fall</option>
+        <option value="stock">Stock Break 分攤</option>
+        <option value="adds">Blessed Barricade 小怪階段</option>
+        <option value="bloom1">一式 Roseblood Bloom</option>
+        <option value="bloom2">二式 2nd Bloom</option>
+        <option value="bloom3">三式 3rd Bloom（放花＋塔）</option>
+        <option value="esc2">幻影＋震驚＋凌空錯（三式後）</option>
+        <option value="bloom4">四式 4th Bloom（放花＋雷＋拉線分攤）</option>
+        <option value="esc3">幻影＋凌空錯＋半場刀（四式後）</option>
+      </select>
+    </label>
+    <label>我的職能
+      <select id="role">
+        <option>MT</option><option>ST</option><option>H1</option><option>H2</option>
+        <option selected>D1</option><option>D2</option><option>D3</option><option>D4</option>
+      </select>
+    </label>
+    <label class="chk"><input type="checkbox" id="hintMe" checked> 提示我現在該站哪</label>
+    <div class="group">
+      <h3>凌空錯設定</h3>
+      <label>站位
+        <select id="layout">
+          <option value="zy" selected>子言攻略：T/H 王前、DPS 王後</option>
+          <option value="clock">八方時鐘位（Icy Veins 式）</option>
+        </select>
+      </label>
+      <label>第一刀站位
+        <select id="first">
+          <option value="auto" selected>固定：T/H 內圈、DPS 外圈（子言）</option>
+          <option value="S">支援組固定吃第 1、3 刀</option>
+          <option value="D">DPS 組固定吃第 1、3 刀</option>
+        </select>
+      </label>
+      <label>順序
+        <select id="seqMode">
+          <option value="rand" selected>隨機（ABBA／AABB）</option>
+          <option value="close,far,far,close">近 遠 遠 近</option>
+          <option value="far,close,close,far">遠 近 近 遠</option>
+          <option value="close,close,far,far">近 近 遠 遠</option>
+          <option value="far,far,close,close">遠 遠 近 近</option>
+        </select>
+      </label>
+      <label>扇形角度<output id="angOut">20°</output>
+        <input type="range" id="ang" min="10" max="45" step="5" value="20">
+      </label>
+      <label>每刀間隔<output id="gapOut">3.0 秒</output>
+        <input type="range" id="gap" min="2.6" max="4.5" step="0.1" value="3">
+      </label>
+      <label class="chk"><input type="checkbox" id="hintSeq"> 讀條時顯示近／遠文字</label>
+    </div>
+  </div>
+  <button id="go" type="button">開始（空白鍵）</button>
+  <div class="rule"><b>凌空錯 異 2、同 13</b>：前兩刀不同 → 第 2 刀後換位；前兩刀相同 → 第 1、3 刀後換位。近 = 站進王的紅圈，遠 = 退到金色圓圈外。</div>
+  <p class="note">開場站位：支援在正點（MT=A、ST=B、H2=C、H1=D），DPS 在斜點（D3=1、D4=2、D2=3、D1=4）。Shock 依子言影片：月環組進左右四座塔（MT／D3 左上、ST／D4 右上、H1／D1 左下、H2／D2 右下），圓圈組到 A、C 兩側外面放，中間留空。範圍大小、時間為推估值。凌空錯打法參考 B 站子言姐姐 7.2 攻略。</p>
+</details>
+
+<div id="timeline" class="hud box" hidden><h4>時間軸</h4><div id="tlList"></div></div>
+
+<div id="cast" class="hud box" hidden>
+  <div class="castname" id="castName"></div>
+  <div class="bar"><div class="fill" id="castFill"></div></div>
+  <div class="seq" id="seqChips"></div>
+  <div id="advice"></div>
+</div>
+
+<div id="me" class="hud box">
+  <div id="meRole">D1・DPS 組</div>
+  <div id="meDeb"></div>
+  <div class="rec" id="meRec">通過 0 / 嘗試 0</div>
+</div>
+
+<div id="help" class="hud box">
+  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動　拖曳 轉視角　滾輪 縮放　<kbd>空白</kbd> 開始／重來
+</div>
+
+<div id="banner" class="hud box intro">
+  <h2>極 澤蓮尼亞 練習場</h2>
+  <p>全程依序：Thorned Catharsis → Shock＋塔 → Specter of the Lost → 凌空錯 → Stock Break → 小怪階段 → 一式 → 二式 → 三式 → 幻影＋震驚＋凌空錯 → 四式 → 幻影＋凌空錯＋半場刀。也可以在左側「練習範圍」單選一個機制。</p>
+  <p class="sub">其他 7 人由 NPC 照攻略走位，你只控制自己。站錯會立刻停下並說明原因。</p>
+  <p class="sub">按「開始」或空白鍵。</p>
+</div>
+
+<div id="joy" class="hud" hidden><div id="knob"></div></div>
+<div id="err" class="hud" hidden></div>
+
+<script>
+/* 依序嘗試：同站檔案 → cdnjs → jsDelivr → unpkg，每個 6 秒逾時 */
+window.__loadThree = function(done){
+  const srcs=['three.min.js','https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js',
+    'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js','https://unpkg.com/three@0.152.2/build/three.min.js'];
+  let i=0;
+  (function next(){
+    if(window.THREE || i>=srcs.length) return done();
+    const sc=document.createElement('script'); let settled=false;
+    const fin=()=>{ if(settled) return; settled=true; clearTimeout(to); window.THREE?done():next(); };
+    const to=setTimeout(()=>{ sc.remove(); fin(); },6000);
+    sc.onload=fin; sc.onerror=fin; sc.src=srcs[i++]; document.head.appendChild(sc);
+  })();
+};
+</script>
+<script>
+window.__loadThree(() => {
+const $ = id => document.getElementById(id);
+if (!window.THREE) { const e=$('err'); e.hidden=false; e.textContent='3D 引擎（Three.js）載入失敗：同站檔案與三個 CDN 都連不上。請確認公司網路或擋廣告外掛沒有封鎖，然後重新整理。'; return; }
+const T = THREE;
+
+/* ---------- 常數與站位 ---------- */
+const WALK_R = 16, ARENA_R = 20, SPEED = 6, DEBUFF = 5;
+const GROUP_NAME = { S:'支援組', D:'DPS 組' };
+const ROLE_INFO = {
+  MT:{grp:'S',col:0x4f8dff,tank:1}, ST:{grp:'S',col:0x4f8dff,tank:1}, H1:{grp:'S',col:0x47c27a}, H2:{grp:'S',col:0x47c27a},
+  D1:{grp:'D',col:0xe0565b}, D2:{grp:'D',col:0xe0565b}, D3:{grp:'D',col:0xe0565b}, D4:{grp:'D',col:0xe0565b},
+};
+const ROLE_IDS = Object.keys(ROLE_INFO);
+// 開場時鐘位（由北起順時針度數）；支援在正點，DPS 在斜點；搭檔 = 支援 +45°
+const CLOCK = { MT:0, ST:90, H2:180, H1:270, D4:45, D2:135, D1:225, D3:315 };
+const MARK_NAME = {0:'A',90:'B',180:'C',270:'D',315:'1',45:'2',135:'3',225:'4'};
+const ESC_LAYOUTS = {
+  zy:   { close:1.6, far:5.6, start:3.6, closeMax:2.45, farMin:4.4, closeTxt:'近（王的紅圈內）', farTxt:'遠（金色圓圈外）',
+          ang:{ MT:345, ST:15, H1:315, H2:45, D3:225, D1:195, D2:165, D4:135 } },
+  clock:{ close:3.0, far:13.8, start:8, closeMax:4.4, farMin:10.2, closeTxt:'近（內側金圈內）', farTxt:'遠（外圈玫瑰磚）',
+          ang:CLOCK },
+};
+const dirOf = a => { const r=a*Math.PI/180; return { x:Math.sin(r), z:-Math.cos(r) }; };
+const posAt = (a,r) => { const d=dirOf(a); return { x:d.x*r, z:d.z*r }; };
+const dist = (a,b) => Math.hypot(a.x-b.x, a.z-b.z);
+const rand = n => Math.floor(Math.random()*n);
+const who = m => m.isPlayer ? m.id+'（你）' : m.id;
+
+/* ---------- 場景 ---------- */
+let renderer;
+try { renderer = new T.WebGLRenderer({ antialias:true }); }
+catch(e){ const el=$('err'); el.hidden=false; el.textContent='無法建立 WebGL，請開啟瀏覽器硬體加速。'; return; }
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = T.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+$('stage').appendChild(renderer.domElement);
+
+const scene = new T.Scene();
+scene.background = new T.Color(0x0d0910);
+scene.fog = new T.Fog(0x0d0910, 30, 75);
+const camera = new T.PerspectiveCamera(54, innerWidth/innerHeight, 0.1, 160);
+scene.add(new T.HemisphereLight(0xffe6f0, 0x1a0c14, 0.85));
+const sun = new T.DirectionalLight(0xfff1dc, 1.4);
+sun.position.set(-10, 26, 12); sun.castShadow = true;
+sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, { left:-24, right:24, top:24, bottom:-24, near:1, far:70 });
+scene.add(sun);
+
+function canvasTex(cv){ const t=new T.CanvasTexture(cv); t.colorSpace=T.SRGBColorSpace; t.anisotropy=8; return t; }
+function rose(g,x,y,s,a){ g.save(); g.translate(x,y); g.fillStyle=`rgba(232,80,110,${a})`;
+  for(let i=0;i<5;i++){ g.rotate(Math.PI*2/5); g.beginPath(); g.ellipse(0,-s*.45,s*.3,s*.5,0,0,7); g.fill(); }
+  g.fillStyle=`rgba(255,150,170,${a+.1})`; g.beginPath(); g.arc(0,0,s*.24,0,7); g.fill(); g.restore(); }
+function floorTexture(){
+  const S=1024, c=S/2, k=c/ARENA_R, cv=document.createElement('canvas'); cv.width=cv.height=S;
+  const g=cv.getContext('2d');
+  const bg=g.createRadialGradient(c,c,0,c,c,c);
+  bg.addColorStop(0,'#1c2a6a'); bg.addColorStop(.8,'#14205a'); bg.addColorStop(1,'#0c1236');
+  g.fillStyle=bg; g.fillRect(0,0,S,S);
+  const fl=g.createRadialGradient(c,c,0,c,c,WALK_R*k);
+  fl.addColorStop(0,'#a99c70'); fl.addColorStop(.75,'#9a8b5e'); fl.addColorStop(1,'#7f6e44');
+  g.fillStyle=fl; g.beginPath(); g.arc(c,c,WALK_R*k,0,7); g.fill();
+  for(let i=0;i<1400;i++){ const r=(WALK_R+.4+Math.random()*3.6)*k, a=Math.random()*7;
+    g.fillStyle=`rgba(${90+Math.random()*80|0},${110+Math.random()*90|0},255,${Math.random()*.25})`;
+    g.beginPath(); g.arc(c+Math.cos(a)*r,c+Math.sin(a)*r,Math.random()*3+1,0,7); g.fill(); }
+  [[4.4,10.2],[10.2,15.8]].forEach(([a,b],ri)=>{ for(let i=0;i<8;i++){
+    const th0=(i*45-22.5-90)*Math.PI/180, th1=th0+Math.PI/4;
+    g.beginPath(); g.arc(c,c,b*k,th0,th1); g.arc(c,c,a*k,th1,th0,true); g.closePath();
+    g.fillStyle=(i+ri)%2?'rgba(140,90,70,.16)':'rgba(70,50,60,.16)'; g.fill();
+    g.strokeStyle='rgba(150,112,50,.55)'; g.lineWidth=3; g.stroke();
+    const mid=(i*45-90)*Math.PI/180, rr=(a+b)/2*k; rose(g,c+Math.cos(mid)*rr,c+Math.sin(mid)*rr,ri?24:18,.22);
+  }});
+  const pg=g.createRadialGradient(c,c,0,c,c,4.4*k);
+  pg.addColorStop(0,'rgba(120,20,40,.55)'); pg.addColorStop(1,'rgba(90,10,30,0)');
+  g.fillStyle=pg; g.beginPath(); g.arc(c,c,4.4*k,0,7); g.fill();
+  g.strokeStyle='rgba(190,150,70,1)'; g.lineWidth=9; g.beginPath(); g.arc(c,c,WALK_R*k,0,7); g.stroke();
+  return canvasTex(cv);
+}
+const floor = new T.Mesh(new T.CircleGeometry(ARENA_R,128).rotateX(-Math.PI/2), new T.MeshStandardMaterial({ map:floorTexture(), roughness:.9 }));
+floor.receiveShadow = true; scene.add(floor);
+const outer = new T.Mesh(new T.RingGeometry(ARENA_R, 70, 96).rotateX(-Math.PI/2), new T.MeshStandardMaterial({ color:0x120d18, roughness:1 }));
+outer.position.y=-.02; scene.add(outer);
+const wall = new T.Mesh(new T.CylinderGeometry(WALK_R+.3,WALK_R+.3,1.4,128,1,true),
+  new T.MeshBasicMaterial({ color:0xff4d6d, transparent:true, opacity:.22, side:T.DoubleSide, depthWrite:false }));
+wall.position.y=.7; scene.add(wall);
+
+function markTex(lbl,col,square){
+  const cv=document.createElement('canvas'); cv.width=cv.height=128; const g=cv.getContext('2d');
+  g.fillStyle=col+'55'; g.strokeStyle=col; g.lineWidth=7;
+  if(square){ g.fillRect(14,14,100,100); g.strokeRect(14,14,100,100); }
+  else { g.beginPath(); g.arc(64,64,52,0,7); g.fill(); g.stroke(); }
+  g.fillStyle='#fff'; g.font='900 64px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(lbl,64,68);
+  return canvasTex(cv);
+}
+[['A',0,'#ff5a5a',0],['B',90,'#ffd84a',0],['C',180,'#4ab4ff',0],['D',270,'#c77dff',0],
+ ['1',315,'#ff5a5a',1],['2',45,'#ffd84a',1],['3',135,'#4ab4ff',1],['4',225,'#c77dff',1]].forEach(([l,a,c,sq])=>{
+  const m=new T.Mesh(new T.PlaneGeometry(1.7,1.7).rotateX(-Math.PI/2), new T.MeshBasicMaterial({ map:markTex(l,c,sq), transparent:true, depthWrite:false }));
+  const d=dirOf(a); m.position.set(d.x*15,.04,d.z*15); m.rotation.y=-a*Math.PI/180+Math.PI; scene.add(m);
+});
+
+/* ---------- 王 ---------- */
+const boss = new T.Group();
+{
+  const dress=new T.MeshStandardMaterial({ color:0x8a1f3d, roughness:.45, metalness:.2 });
+  const pale=new T.MeshStandardMaterial({ color:0xf0dde4, roughness:.6 });
+  const gold=new T.MeshStandardMaterial({ color:0xe9c46a, roughness:.3, metalness:.8 });
+  const skirt=new T.Mesh(new T.ConeGeometry(1.5,3.2,28,1,true),dress); skirt.position.y=1.6; skirt.castShadow=true;
+  const torso=new T.Mesh(new T.CylinderGeometry(.36,.52,1.1,20),dress); torso.position.y=3.65; torso.castShadow=true;
+  const head=new T.Mesh(new T.SphereGeometry(.36,20,16),pale); head.position.y=4.55;
+  const crown=new T.Mesh(new T.TorusGeometry(.4,.06,8,32),gold); crown.position.y=4.85; crown.rotation.x=Math.PI/2;
+  const sword=new T.Mesh(new T.BoxGeometry(.12,.02,3.4),gold); sword.position.set(.8,3.2,-.6); sword.rotation.set(-.5,.3,0);
+  boss.add(skirt,torso,head,crown,sword);
+  for(let i=0;i<6;i++){ const p=new T.Mesh(new T.SphereGeometry(.28,12,10),new T.MeshStandardMaterial({ color:0xe8506e, roughness:.5 }));
+    const a=i/6*Math.PI*2; p.position.set(Math.cos(a)*1.25,.35,Math.sin(a)*1.25); boss.add(p); }
+}
+scene.add(boss);
+const hitRing = new T.Mesh(new T.RingGeometry(2.25,2.45,64).rotateX(-Math.PI/2), new T.MeshBasicMaterial({ color:0xff3355, transparent:true, opacity:.85 }));
+hitRing.position.y=.05; scene.add(hitRing);
+const frontMark = new T.Mesh(new T.ConeGeometry(.28,.5,3).rotateX(-Math.PI/2), new T.MeshBasicMaterial({ color:0xff3355 }));
+frontMark.position.set(0,.06,-2.75); scene.add(frontMark);
+
+/* ---------- 共用視覺 ---------- */
+const iconCache = {};
+function iconTex(type){
+  if(iconCache[type]) return iconCache[type];
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const g=cv.getContext('2d');
+  const glow=type==='close'?'#ff7ab8':'#a77bff';
+  const pts = type==='close' ? [[-34,4,26],[0,4,34],[34,4,26]] : [[-92,8,22],[0,0,34],[92,8,22]];
+  g.shadowColor=glow; g.shadowBlur=22;
+  pts.forEach(([x,y,s])=>{ g.save(); g.translate(128+x,64+y); g.rotate(Math.PI/4);
+    g.fillStyle=glow; g.fillRect(-s/2,-s/2,s,s); g.fillStyle='rgba(255,255,255,.75)'; g.fillRect(-s/5,-s/5,s/2.5,s/2.5); g.restore(); });
+  return iconCache[type]=canvasTex(cv);
+}
+const indicator = new T.Mesh(new T.PlaneGeometry(3.2,1.6), new T.MeshBasicMaterial({ transparent:true, depthWrite:false, side:T.DoubleSide }));
+indicator.position.y=5.7; indicator.visible=false; scene.add(indicator);
+
+const labelCache = {};
+function labelTex(text,color){
+  const key=text+color; if(labelCache[key]) return labelCache[key];
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=96; const g=cv.getContext('2d');
+  g.font='700 46px "Noto Sans TC",system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=8; g.strokeStyle='rgba(10,5,10,.9)'; g.strokeText(text,128,50); g.fillStyle=color; g.fillText(text,128,50);
+  return labelCache[key]=canvasTex(cv);
+}
+function makeLabel(text,color){
+  const s=new T.Sprite(new T.SpriteMaterial({ map:labelTex(text,color), transparent:true, depthWrite:false }));
+  s.scale.set(1.9,.71,1); return s;
+}
+
+// 暫時性特效：{obj, until, fade, born}
+let fx = [];
+function addFx(obj, life, fade=true){ if(!obj.renderOrder) obj.renderOrder=5; scene.add(obj); fx.push({ obj, born:t, until:t+life, fade, op0:obj.material?obj.material.opacity:1 }); return obj; }
+// 判定瞬間的特效：實心填色＋亮邊＋往上的光柱感（加亮混色）
+function strongFlash(mesh, edge){ mesh.material.blending=T.AdditiveBlending; addFx(mesh,.9); if(edge) edge.forEach(e=>{ e.material.blending=T.AdditiveBlending; addFx(e,.9); }); }
+function clearFx(){ fx.forEach(f=>scene.remove(f.obj)); fx=[]; }
+function groundMat(color,op){ return new T.MeshBasicMaterial({ color, transparent:true, opacity:op, depthWrite:false, side:T.DoubleSide }); }
+function circleMesh(x,z,r,color,op=.45,y=.07){ const m=new T.Mesh(new T.CircleGeometry(r,48).rotateX(-Math.PI/2),groundMat(color,op)); m.position.set(x,y,z); return m; }
+function ringMesh(x,z,r0,r1,color,op=.45,y=.07){ const m=new T.Mesh(new T.RingGeometry(r0,r1,64).rotateX(-Math.PI/2),groundMat(color,op)); m.position.set(x,y,z); return m; }
+function coneMesh(dir,half,len,color,op=.5,y=.08){
+  const m=new T.Mesh(new T.CircleGeometry(len,24,-half,half*2).rotateX(-Math.PI/2),groundMat(color,op));
+  m.position.y=y; m.rotation.y=Math.atan2(-dir.z,dir.x); return m;
+}
+function screenFlash(){ const f=$('flash'); f.style.opacity=1; setTimeout(()=>f.style.opacity=0,350); }
+
+/* ---------- 隊員 ---------- */
+let members = [], player = null;
+function makeMember(id,isPlayer){
+  const info=ROLE_INFO[id], grp=new T.Group();
+  const mat=new T.MeshStandardMaterial({ color:info.col, roughness:.5, metalness:.1 });
+  const body=new T.Mesh(new T.CylinderGeometry(.26,.32,1.0,16),mat); body.position.y=.7; body.castShadow=true;
+  const head=new T.Mesh(new T.SphereGeometry(.24,16,12),mat); head.position.y=1.42; head.castShadow=true;
+  const ring=new T.Mesh(new T.RingGeometry(.42,.54,32).rotateX(-Math.PI/2),
+    new T.MeshBasicMaterial({ color:isPlayer?0xe9c46a:info.col, transparent:true, opacity:isPlayer?1:.55 }));
+  ring.position.y=.06;
+  const lbl=makeLabel(isPlayer?id+' 你':id, isPlayer?'#e9c46a':'#f4eaef'); lbl.position.y=2.1;
+  const tag=makeLabel('','#fff'); tag.position.y=2.75; tag.scale.multiplyScalar(.8); tag.visible=false;
+  grp.add(body,head,ring,lbl,tag); scene.add(grp);
+  return { id, grp:info.grp, tank:!!info.tank, isPlayer, obj:grp, mat, tag, x:0, z:0, tx:0, tz:0,
+           slash:-1, dead:false, reactAt:0, jit:Math.random()*.5-.25 };
+}
+function setTag(m,text,color,slash){ m._slashTag=!!slash; if(!text){ m.tag.visible=false; return; } m.tag.material.map=labelTex(text,color); m.tag.material.needsUpdate=true; m.tag.visible=true; }
+function buildMembers(myId){
+  members.forEach(m=>scene.remove(m.obj));
+  members = ROLE_IDS.map(id=>makeMember(id,id===myId));
+  player = members.find(m=>m.isPlayer);
+}
+const byId = id => members.find(m=>m.id===id);
+
+/* ---------- 設定 ---------- */
+let cfg = {};
+function readCfg(){
+  cfg = { mode:$('mode').value, role:$('role').value, esc:ESC_LAYOUTS[$('layout').value], first:$('first').value, seqMode:$('seqMode').value,
+    half:(+$('ang').value)/2*Math.PI/180, gap:+$('gap').value, hintSeq:$('hintSeq').checked, hintMe:$('hintMe').checked };
+}
+$('ang').addEventListener('input',()=>$('angOut').textContent=$('ang').value+'°');
+$('gap').addEventListener('input',()=>$('gapOut').textContent=(+$('gap').value).toFixed(1)+' 秒');
+document.querySelectorAll('#panel select,#panel input').forEach(el=>el.addEventListener('change',()=>{
+  el.blur();
+  if(state!=='running'){ readCfg(); placeIdle(); }
+}));
+if(innerWidth<720) $('panel').open=false;
+
+let stats={ tries:0, clears:0 };
+try{ const s=JSON.parse(localStorage.getItem('zelenia-stats')||'null'); if(s) stats=s; }catch(e){}
+function saveStats(){ try{ localStorage.setItem('zelenia-stats',JSON.stringify(stats)); }catch(e){} }
+
+/* ---------- 時間軸引擎 ---------- */
+let state='idle', t=0, events=[], ticks=[], cast=null, advice='', planFn=null, tl=[];
+function at(time,fn){ events.push({ at:time, fn }); events.sort((a,b)=>a.at-b.at); }
+function setCast(name,sub,len){ cast={ name, sub, start:t, len }; }
+function setPlan(fn,delay=.3){ planFn=fn; members.forEach(m=>m.reactAt=t+delay+Math.random()*.35); }
+function tlMark(i,cls){ tl.forEach((e,j)=>{ if(j===i) e.cls=cls; else if(cls==='now' && e.cls==='now') e.cls='ok'; }); renderTl(); }
+function renderTl(){
+  $('tlList').innerHTML = tl.map(e=>`<div class="ev ${e.cls||''}"><i>${tl.indexOf(e)+1}</i><span>${e.name}</span></div>`).join('');
+}
+
+function placeIdle(){
+  buildMembers(cfg.role);
+  const startPos = m => cfg.mode==='esc' ? posAt(cfg.esc.ang[m.id],cfg.esc.start) : posAt(CLOCK[m.id],8);
+  members.forEach(m=>{ const p=startPos(m); m.x=m.tx=p.x; m.z=m.tz=p.z; });
+  const d=dirOf(cfg.mode==='esc'?cfg.esc.ang[player.id]:CLOCK[player.id]); camYaw=Math.atan2(d.x,d.z);
+  updateMeHud();
+}
+
+function start(){
+  readCfg();
+  clearFx(); clearTethers(); roseSet=null;
+  boss.traverse(o=>{ if(o.material){ o.material.opacity=1; o.material.transparent=false; o.material.needsUpdate=true; } }); events=[]; ticks=[]; cast=null; advice=''; planFn=null; esc=null;
+  t=0; state='running';
+  placeIdle();
+  $('banner').hidden=true; $('cast').hidden=true; indicator.visible=false;
+  $('panel').open=false;
+  const list = cfg.mode==='all' ? STEPS : STEPS.filter(x=>x.id===cfg.mode);
+  tl=list.map(x=>({ name:x.name }));
+  $('timeline').hidden = list.length<2;
+  let i=0;
+  const go=()=>{ if(state!=='running') return;
+    if(i>=list.length) return finish(list.length>1?'全程完成':list[0].name+' 完成');
+    tlMark(i,'now'); list[i].fn(()=>{ tlMark(i,'ok'); i++; at(t+1.5,go); }); };
+  at(0.8,go);
+  renderTl();
+}
+
+/* ---------- 機制清單（全程依序；也可單選） ---------- */
+function catharsis(next){ setCast('Thorned Catharsis','全體 AOE',4); setPlan(m=>posAt(CLOCK[m.id],8)); at(t+4,()=>{ screenFlash(); cast=null; next(); }); }
+const STEPS=[
+  { id:'cath', name:'Thorned Catharsis', fn:n=>catharsis(n) },
+  { id:'shock', name:'Shock ＋ 聖光塔', fn:n=>shock(n) },
+  { id:'specter', name:'Specter of the Lost', fn:n=>specter(n) },
+  { id:'esc', name:"凌空錯 Escelons' Fall", fn:n=>escelons(n) },
+  { id:'stock', name:'Stock Break', fn:n=>stockBreak(n) },
+  { id:'adds', name:'Blessed Barricade 小怪＋Perfumed Quietus', fn:n=>barricade(n) },
+  { id:'bloom1', name:'一式 Roseblood Bloom', fn:n=>bloom1(n) },
+  { id:'bloom2', name:'二式 2nd Bloom', fn:n=>bloom2(n) },
+  { id:'bloom3', name:'三式 3rd Bloom', fn:n=>bloom3(n) },
+  { id:'esc2', name:'幻影＋震驚＋凌空錯', fn:n=>escelons2(n) },
+  { id:'stock2', name:'Stock Break', fn:n=>stockBreak(n) },
+  { id:'bloom4', name:'四式 4th Bloom', fn:n=>bloom4(n) },
+  { id:'esc3', name:'幻影＋凌空錯＋半場刀', fn:n=>escelons3(n) },
+  { id:'stock3', name:'Stock Break', fn:n=>stockBreak(n) },
+];
+
+/* Shock + Alexandrian Holy：一組月環（進塔）、一組圓圈（到外側放）；中間留空。站位依子言影片 */
+function shock(next){
+  const donutGrp = Math.random()<.5 ? 'S' : 'D';
+  const TOWER_R=9.7, TOWER_RAD=5.6, DONUT_IN=1.2, DONUT_OUT=3, CIRCLE_R=4.3, LEN=6;
+  setCast('Shock','月環進塔、圓圈到外側放',LEN);
+  // 塔：左上、右上、左下、右下（中間與 A、C 方向留空）
+  const TOWER_ANG=[300,60,240,120], TOWER_NAME={300:'左上',60:'右上',240:'左下',120:'右下'};
+  const CIRCLE_SPOT={336:[10.4,'A 左側'],24:[10.4,'A 右側'],204:[15,'C 左側'],156:[15,'C 右側']};
+  const towers=TOWER_ANG.map(a=>{ const p=posAt(a,TOWER_R);
+    const g=new T.Group();
+    const cyl=new T.Mesh(new T.CylinderGeometry(TOWER_RAD,TOWER_RAD,2.4,48,1,true),
+      new T.MeshBasicMaterial({ color:0x9fe8ff, transparent:true, opacity:.14, side:T.DoubleSide, depthWrite:false }));
+    cyl.position.y=1.2; g.add(cyl, ringMesh(0,0,TOWER_RAD-.18,TOWER_RAD,0xdff8ff,.9));
+    g.position.set(p.x,0,p.z); addFx(g,LEN+.3,false); return { a, x:p.x, z:p.z };
+  });
+  const role = m => m.grp===donutGrp ? 'donut' : 'circle';
+  // 左上/右上 = MT、ST 或 D3、D4；左下/右下 = H1、H2 或 D1、D2
+  const SLOT={ MT:0, ST:1, H1:2, H2:3, D3:0, D4:1, D1:2, D2:3 };
+  const angFor = m => role(m)==='donut' ? TOWER_ANG[SLOT[m.id]] : [336,24,204,156][SLOT[m.id]];
+  const spotFor = m => role(m)==='donut' ? posAt(angFor(m),TOWER_R) : posAt(angFor(m),CIRCLE_SPOT[angFor(m)][0]);
+  const spotName = m => role(m)==='donut' ? TOWER_NAME[angFor(m)]+'塔' : CIRCLE_SPOT[angFor(m)][1];
+  // 腳下標記：月環 = 藍色環、圓圈 = 橘色小圈，跟著人走
+  const marks = members.map(m=>{
+    const mk = role(m)==='donut' ? ringMesh(0,0,DONUT_IN,DONUT_OUT,0x5fd0ff,.35,.09) : circleMesh(0,0,CIRCLE_R,0xffb35c,.22,.09);
+    const edge = ringMesh(0,0,(role(m)==='donut'?DONUT_OUT:CIRCLE_R)-.12,role(m)==='donut'?DONUT_OUT:CIRCLE_R,role(m)==='donut'?0x5fd0ff:0xffb35c,.9,.095);
+    const g=new T.Group(); g.add(mk,edge); scene.add(g); fx.push({ obj:g, born:t, until:t+LEN, fade:false });
+    setTag(m, role(m)==='donut'?'月環':'圓圈', role(m)==='donut'?'#5fd0ff':'#ffb35c');
+    return { m, g };
+  });
+  ticks.push(()=>{ marks.forEach(k=>k.g.position.set(k.m.x,0,k.m.z)); return t>=cast?.start+LEN-.01 || state!=='running' || !cast; });
+  setPlan(spotFor, 1.2);
+  advice = `Shock：你是${role(player)==='donut'?'月環 → 進'+spotName(player):'圓圈 → 到 '+spotName(player)+'放，別踩進中間'}`;
+  at(t+LEN,()=>{
+    cast=null; const reasons=[];
+    marks.forEach(k=>scene.remove(k.g));
+    towers.forEach(tw=>{
+      const n=members.filter(m=>!m.dead && Math.hypot(m.x-tw.x,m.z-tw.z)<=TOWER_RAD).length;
+      if(n===0) reasons.push(`${TOWER_NAME[tw.a]}塔沒人踩。`);
+    });
+    members.forEach(src=>{
+      if(role(src)==='donut'){
+        strongFlash(ringMesh(src.x,src.z,DONUT_IN,DONUT_OUT,0x7fe0ff,.85));
+        members.forEach(m=>{ if(m===src) return; const d=dist(m,src); if(d>DONUT_IN && d<DONUT_OUT) reasons.push(`${who(m)} 被 ${who(src)} 的月環打到（距離 ${d.toFixed(1)} m）。`); });
+      } else {
+        strongFlash(circleMesh(src.x,src.z,CIRCLE_R,0xffb35c,.85),[ringMesh(src.x,src.z,CIRCLE_R-.2,CIRCLE_R,0xffffff,1,.1)]);
+        addFx(circleMesh(src.x,src.z,CIRCLE_R,0xff6a2a,.28,.065),6,false);
+        members.forEach(m=>{ if(m===src) return; const d=dist(m,src); if(d<CIRCLE_R) reasons.push(`${who(m)} 被 ${who(src)} 的圓圈打到（距離 ${d.toFixed(1)} m，要拉開 ${CIRCLE_R} m）。`); });
+        const cx=src.x, cz=src.z, endT=t+6;
+        ticks.push(()=>{ if(t>endT) return true; if(t<endT-4) return false;
+          for(const m of members){ if(!m.dead && Math.hypot(m.x-cx,m.z-cz)<CIRCLE_R-.2){ fail('Shock',[`${who(m)} 站在圓圈留下的火圈裡太久。`]); return true; } }
+          return false; });
+      }
+      setTag(src,'');
+    });
+    if(reasons.length) return fail('Shock',[...new Set(reasons)]);
+    advice='放完了，2 秒內離開火圈，回自己的時鐘位（離中心約 6 m）';
+    setPlan(m=>posAt(CLOCK[m.id],6),.2);
+    next();
+  });
+}
+
+/* Specter of the Lost：2 名非坦克被連線，坦克要用身體穿過連線接走；接著朝持有者放 60° 扇形死刑 */
+let tethers=[];
+function clearTethers(){ tethers.forEach(th=>scene.remove(th.line)); tethers=[]; }
+function specter(next){
+  const LEN=6, HALF=Math.PI/6;
+  setCast('Specter of the Lost','2 條死刑連線，坦克接線',LEN);
+  const pool=members.filter(m=>!m.tank); const a=pool.splice(rand(pool.length),1)[0], b=pool[rand(pool.length)];
+  [a,b].forEach(h=>{
+    const geo=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute([0,3,0,0,1,0],3));
+    const line=new T.Line(geo,new T.LineBasicMaterial({ color:0xc77dff })); scene.add(line);
+    tethers.push({ holder:h, line });
+  });
+  // 指派：離 MT 角度較近的那條給 MT
+  const angOf=m=>(Math.atan2(m.x,-m.z)*180/Math.PI+360)%360;
+  const angDiff=(p,q)=>{ const d=Math.abs(p-q)%360; return d>180?360-d:d; };
+  const [t1,t2]=tethers;
+  const mtFirst=angDiff(angOf(t1.holder),CLOCK.MT)+angDiff(angOf(t2.holder),CLOCK.ST) <= angDiff(angOf(t2.holder),CLOCK.MT)+angDiff(angOf(t1.holder),CLOCK.ST);
+  const assign={ MT: mtFirst?t1:t2, ST: mtFirst?t2:t1 };
+  // 原本分配的線被另一個坦克接走了，就改接剩下那條
+  const targetTether=m=>{ const own=assign[m.id]; if(!own.holder.tank) return own; return tethers.find(o=>!o.holder.tank)||null; };
+  setPlan(m=>{
+    if(!m.tank) return posAt(CLOCK[m.id],6);
+    if(tethers.some(o=>o.holder===m)) return posAt(CLOCK[m.id],6);
+    const th=targetTether(m); if(!th) return posAt(CLOCK[m.id],6);
+    const h=th.holder, d=Math.hypot(h.x,h.z)||1; return { x:h.x/d*4, z:h.z/d*4 };   // 站到連線上
+  },.8);
+  if(player.tank) advice=`Specter：去接 ${assign[player.id].holder===player?'（已在你身上）':assign[player.id].holder.id+' 的連線（走過紫線）'}，接到後回 ${MARK_NAME[CLOCK[player.id]]} 點把扇形朝外`;
+  else if(a===player||b===player) advice='Specter：你被連線了，站在時鐘位等坦克接走，別亂跑';
+  else advice='Specter：留在自己的時鐘位，別站到坦克前方';
+  ticks.push(()=>{
+    for(const th of tethers){
+      const h=th.holder, p=th.line.geometry.attributes.position; p.setXYZ(1,h.x,1,h.z); p.needsUpdate=true;
+      if(h.tank) continue;
+      for(const m of members){
+        if(!m.tank || m.dead || tethers.some(o=>o.holder===m)) continue;
+        if((!m.isPlayer || window.__autopilot) && targetTether(m)!==th) continue;
+        const L=Math.hypot(h.x,h.z); if(L<.1) continue;
+        const ux=h.x/L, uz=h.z/L, proj=m.x*ux+m.z*uz; if(proj<1.5||proj>L) continue;
+        const perp=Math.abs(m.x*uz-m.z*ux); if(perp<.7){ th.holder=m; break; }
+      }
+    }
+    return !tethers.length;
+  });
+  at(t+LEN,()=>{
+    cast=null; const reasons=[];
+    tethers.forEach(th=>{
+      const h=th.holder, d=Math.hypot(h.x,h.z)||1, dir={ x:h.x/d, z:h.z/d };
+      strongFlash(coneMesh(dir,HALF,30,0xd08cff,.8));
+      if(!h.tank) reasons.push(`${who(h)} 的死刑連線沒有被坦克接走。`);
+      members.forEach(m=>{ if(m===h) return; const md=Math.hypot(m.x,m.z); if(md<.5) return;
+        const c=(m.x*dir.x+m.z*dir.z)/md; if(Math.acos(Math.max(-1,Math.min(1,c)))<=HALF) reasons.push(`${who(m)} 站在 ${who(h)} 的死刑扇形裡。`); });
+    });
+    clearTethers();
+    if(reasons.length) return fail('Specter of the Lost',reasons);
+    advice=''; next();
+  });
+}
+
+/* Stock Break：補師 4 連分攤 */
+function stockBreak(next){
+  const LEN=5, R=3;
+  const h=byId(Math.random()<.5?'H1':'H2');
+  setCast('Stock Break',`${h.id} 4 連分攤`,LEN);
+  setTag(h,'分攤','#e9c46a');
+  const ring=ringMesh(0,0,R-.15,R,0xe9c46a,.9); scene.add(ring); fx.push({ obj:ring, born:t, until:t+LEN+2.2, fade:false });
+  ticks.push(()=>{ ring.position.set(h.x,.07,h.z); return state!=='running'; });
+  setPlan(m=> m===h ? { x:h.x, z:h.z } : { x:h.x+m.jit*2.4, z:h.z+m.jit*-1.6 }, .6);
+  advice = h===player ? 'Stock Break：你是分攤目標，站穩讓大家靠過來' : `Stock Break：去 ${h.id} 身邊分攤（金圈內）`;
+  for(let k=0;k<4;k++) at(t+LEN+k*.55,()=>{
+    if(state!=='running') return;
+    strongFlash(circleMesh(h.x,h.z,R,0xffd36a,.8));
+    const out=members.filter(m=>!m.dead && dist(m,h)>R);
+    if(out.length) return fail('Stock Break',[`第 ${k+1} 段分攤時 ${out.map(who).join('、')} 不在 ${h.id} 的金圈內。`]);
+    if(k===3){ setTag(h,''); cast=null; next(); }
+  });
+}
+
+/* Blessed Barricade 小怪階段（子言：被分身連線 → 引導左右刃；沒被連線 → 踩塔）。支援在西、DPS 在東 */
+function makeShade(a){
+  const p=posAt(a,15.2), g=new T.Group();
+  const mat=new T.MeshStandardMaterial({ color:0x9b6bff, transparent:true, opacity:.75, roughness:.4, emissive:0x3a1a77 });
+  const body=new T.Mesh(new T.ConeGeometry(1.0,2.6,20,1,true),mat); body.position.y=1.3;
+  const head=new T.Mesh(new T.SphereGeometry(.3,16,12),mat); head.position.y=2.9;
+  g.add(body,head); g.position.set(p.x,0,p.z); scene.add(g);
+  const sword=new T.Mesh(new T.BoxGeometry(.18,3.2,.18),new T.MeshBasicMaterial({ color:0xffe08a }));
+  sword.visible=false; scene.add(sword);
+  return { g, sword, x:p.x, z:p.z, a };
+}
+function lineTo(x0,z0,color){
+  const geo=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute([x0,2,z0,x0,1,z0],3));
+  const line=new T.Line(geo,new T.LineBasicMaterial({ color })); scene.add(line); return line;
+}
+function barricade(next){
+  const ROUNDS=4, GAP=8.5, LEN=6.5, TR=3, START=t;
+  const WT=[225,315,225,315], ET=[45,135,45,135];
+  setCast('Blessed Barricade','王無敵，4 隻小怪＋分身',3);
+  boss.traverse(o=>{ if(o.material){ o.material.transparent=true; o.material.opacity=.35; o.material.needsUpdate=true; } });
+  const adds=[45,135,225,315].map(a=>{ const p=posAt(a,11);
+    const s=new T.Mesh(new T.SphereGeometry(.9,24,18),new T.MeshStandardMaterial({ color:0xd8264a, emissive:0x5a0a1c, roughness:.3 }));
+    s.position.set(p.x,1.3,p.z); scene.add(s); fx.push({ obj:s, born:t, until:t+999, fade:false }); return s; });
+  const shades={ S:makeShade(270), D:makeShade(90) };
+  // 每人只會被連線一次：每組 4 人、4 輪，打亂順序輪流
+  const queue={ S:shuffle(members.filter(m=>m.grp==='S')), D:shuffle(members.filter(m=>m.grp==='D')) };
+  Object.values(shades).forEach(sh=>{ fx.push({ obj:sh.g, born:t, until:t+999, fade:false }); fx.push({ obj:sh.sword, born:t, until:t+999, fade:false }); });
+  const homeOf = m => posAt(m.grp==='S'?WT[0]:ET[0],6);
+  setPlan(m=>{ const h=homeOf(m); return { x:h.x+m.jit*3, z:h.z-m.jit*2 }; },.5);
+  advice = `小怪階段：${GROUP_NAME[player.grp]}去${player.grp==='S'?'西':'東'}側`;
+  const gaugeEnd = START+ROUNDS*GAP+9;
+  ticks.push(()=>{ if(cast && cast.name!=='Perfumed Quietus'){ cast.base=cast.base||cast.sub; cast.sub=`${cast.base}・以太 ${Math.min(99,Math.round((t-START)/(gaugeEnd-START)*92))}/100`; } return state!=='running' || t>gaugeEnd; });
+  for(let k=0;k<ROUNDS;k++) at(START+3+k*GAP,()=>{ if(state==='running') barricadeRound(k); });
+  function barricadeRound(k){
+    setCast(k%2?'Spearpoint Push':'Power Break',`第 ${k+1} / ${ROUNDS} 輪：連線引導半場刀、其他人踩 3 人塔`,LEN);
+    const round={};
+    ['S','D'].forEach(grp=>{
+      const sh=shades[grp], side=Math.random()<.5?'L':'R';
+      const holder=queue[grp][k];
+      // 分身面向場中央；劍在左／右
+      const fd={ x:-sh.x/15.2, z:-sh.z/15.2 }, left={ x:fd.z, z:-fd.x }, sv= side==='L'?left:{ x:-left.x, z:-left.z };
+      sh.sword.position.set(sh.x+sv.x*1.3,2.4,sh.z+sv.z*1.3); sh.sword.rotation.set(sv.z*.5,0,-sv.x*.5); sh.sword.visible=true;
+      const bait={ x:sh.x*8/15.2, z: sv.z>0?12:-12 };       // 往劍那一側的場邊拉
+      const tw=posAt(grp==='S'?WT[k]:ET[k],6);
+      const tower=new T.Group();
+      tower.add(new T.Mesh(new T.CylinderGeometry(TR,TR,2.4,40,1,true),new T.MeshBasicMaterial({ color:0x9fe8ff, transparent:true, opacity:.18, side:T.DoubleSide, depthWrite:false })));
+      tower.children[0].position.y=1.2; tower.add(ringMesh(0,0,TR-.18,TR,0xdff8ff,.9));
+      tower.position.set(tw.x,0,tw.z); addFx(tower,LEN+.2,false);
+      round[grp]={ sh, side, sv, holder, bait, tw, line:lineTo(sh.x,sh.z,0xc77dff) };
+      setTag(holder,'連線','#c77dff');
+    });
+    setPlan(m=>{ const r=round[m.grp];
+      if(m===r.holder) return r.bait;
+      const others=members.filter(o=>o.grp===m.grp && o!==r.holder), i=others.indexOf(m), a=i*2.1;
+      return { x:r.tw.x+Math.cos(a)*1.1, z:r.tw.z+Math.sin(a)*1.1 };
+    },.4);
+    const mine=round[player.grp];
+    advice = mine.holder===player
+      ? `你被${player.grp==='S'?'西':'東'}側分身連線：分身會轉向你，往${mine.sv.z>0?'南':'北'}邊場邊拉，把拿劍的手轉到場外`
+      : `踩${player.grp==='S'?'西':'東'}側的塔（${mine.tw.z>0?'偏南':'偏北'}），3 人以上才算數`;
+    // 分身會轉向被連線的人；拿劍的手跟著轉，半場刀砍在劍那一側
+    ['S','D'].forEach(g=>{ const r=round[g];
+      if(cfg.hintMe){ r.preview=new T.Mesh(new T.PlaneGeometry(44,22).rotateX(-Math.PI/2),groundMat(0xc77dff,.1)); r.preview.position.y=.072; addFx(r.preview,LEN,false); } });
+    const tk=()=>{ ['S','D'].forEach(g=>{ const r=round[g], p=r.line.geometry.attributes.position; p.setXYZ(1,r.holder.x,1,r.holder.z); p.needsUpdate=true;
+      const dx=r.holder.x-r.sh.x, dz=r.holder.z-r.sh.z, L=Math.hypot(dx,dz)||1, d={ x:dx/L, z:dz/L }, lf={ x:d.z, z:-d.x }, hv= r.side==='L'?lf:{ x:-lf.x, z:-lf.z };
+      r.sh.g.rotation.y=Math.atan2(d.x,d.z);
+      r.sh.sword.position.set(r.sh.x+hv.x*1.3,2.4,r.sh.z+hv.z*1.3); r.sh.sword.rotation.set(hv.z*.5,0,-hv.x*.5);
+      if(r.preview){ r.preview.position.set(r.sh.x+d.x*22+hv.x*11,.072,r.sh.z+d.z*22+hv.z*11); r.preview.rotation.y=Math.atan2(-d.z,d.x); } }); return !round.live; };
+    round.live=true; ticks.push(tk);
+    at(t+LEN,()=>{
+      if(state!=='running') return;
+      round.live=false; cast=null; const reasons=[];
+      ['S','D'].forEach(g=>{
+        const r=round[g]; scene.remove(r.line); setTag(r.holder,''); r.sh.sword.visible=false; if(r.preview) scene.remove(r.preview);
+        const dx=r.holder.x-r.sh.x, dz=r.holder.z-r.sh.z, L=Math.hypot(dx,dz)||1, d={ x:dx/L, z:dz/L };
+        const lf={ x:d.z, z:-d.x }, hv= r.side==='L'?lf:{ x:-lf.x, z:-lf.z };
+        const plane=new T.Mesh(new T.PlaneGeometry(44,22).rotateX(-Math.PI/2),groundMat(0xd08cff,.7)); plane.material.blending=T.AdditiveBlending;
+        plane.position.set(r.sh.x+d.x*22+hv.x*11,.075,r.sh.z+d.z*22+hv.z*11); plane.rotation.y=Math.atan2(-d.z,d.x); addFx(plane,1.0);
+        members.forEach(m=>{ if(m===r.holder || m.dead) return;
+          if((m.x-r.sh.x)*hv.x+(m.z-r.sh.z)*hv.z>0) reasons.push(`${who(m)} 被${g==='S'?'西':'東'}側分身的半場刀砍到（連線的是 ${who(r.holder)}）。`); });
+        const n=members.filter(m=>!m.dead && Math.hypot(m.x-r.tw.x,m.z-r.tw.z)<=TR).length;
+        if(n<3) reasons.push(`${g==='S'?'西':'東'}側的塔只有 ${n} 人，需要 3 人。`);
+      });
+      const add=adds[k]; scene.remove(add);
+      if(reasons.length) return fail(`小怪階段 第 ${k+1} 輪`,reasons);
+      if(k===ROUNDS-1){
+        Object.values(shades).forEach(sh=>{ scene.remove(sh.g); scene.remove(sh.sword); });
+        setCast('Perfumed Quietus','小怪全滅，全體 AOE',5);
+        setPlan(m=>posAt(CLOCK[m.id],6),.5); advice='小怪清完，回到時鐘位';
+        at(t+5,()=>{ screenFlash(); cast=null;
+          boss.traverse(o=>{ if(o.material){ o.material.opacity=1; o.material.transparent=false; o.material.needsUpdate=true; } });
+          next(); });
+      }
+    });
+  }
+}
+
+/* ---------- 玫瑰磚（Roseblood）：內圈 r3–8、外圈 r8–16，各 8 塊，邊界在正點／斜點線上 ---------- */
+let roseSet=null;
+const RING=[[3,8],[8,16]];
+const angOfPt=(x,z)=>(Math.atan2(x,-z)*180/Math.PI+360)%360;
+const angDiff=(p,q)=>{ const d=Math.abs(p-q)%360; return d>180?360-d:d; };
+function tileOf(x,z){ const r=Math.hypot(x,z); if(r<3) return 'center'; if(r>16.2) return null; return (r<8?0:1)*8+Math.floor(angOfPt(x,z)/45)%8; }
+function tileNeighbors(id){ const ring=id>>3, w=id&7; return [ring*8+(w+1)%8, ring*8+(w+7)%8, (1-ring)*8+w]; }
+function roseComponents(hitIds){
+  const out=new Set(), stack=[...hitIds].filter(i=>roseSet&&roseSet.has(i));
+  while(stack.length){ const i=stack.pop(); if(out.has(i)) continue; out.add(i); tileNeighbors(i).forEach(n=>{ if(roseSet.has(n)&&!out.has(n)) stack.push(n); }); }
+  return out;
+}
+function sectorMesh(id,color,op,y=.06){
+  const ring=id>>3, w=id&7, [r0,r1]=RING[ring];
+  const m=new T.Mesh(new T.RingGeometry(r0,r1,18,1,(90-45*w-45)*Math.PI/180,Math.PI/4).rotateX(-Math.PI/2),groundMat(color,op));
+  m.position.y=y; return m;
+}
+function setRose(set){
+  roseSet=set;
+  if(roseMesh[0] && roseMesh[0].parent){   // 已經有地板：只換顏色
+    for(let id=0;id<16;id++){ const m=roseMesh[id]; m.material.color.setHex(set.has(id)?0xc8204e:0x08060c); m.material.opacity=set.has(id)?.62:.6; m.userData.flashUntil=undefined; }
+    return; }
+  addFx(circleMesh(0,0,3,0x5a0016,.8,.058),999,false).renderOrder=1;
+  roseMesh={};
+  for(let id=0;id<16;id++){
+    const sm=sectorMesh(id, set.has(id)?0xc8204e:0x08060c, set.has(id)?.62:.6); sm.renderOrder=1; roseMesh[id]=addFx(sm,999,false);
+    addFx(ringMesh(0,0,RING[id>>3][1]-.08,RING[id>>3][1],0x3a2a20,.8,.062),999,false).renderOrder=2;
+  }
+  for(let w=0;w<8;w++){ const a=w*45, d=dirOf(a);
+    const ln=new T.Mesh(new T.PlaneGeometry(.12,13).rotateX(-Math.PI/2),groundMat(0x3a2a20,.9));
+    ln.position.set(d.x*9.5,.063,d.z*9.5); ln.rotation.y=-a*Math.PI/180; ln.renderOrder=2; addFx(ln,999,false); }
+}
+// 引爆後的紅磚變回普通地板（之後可以站）
+let roseMesh={}, dtRun=0;
+function explode(ids){ ids.forEach(id=>{ roseSet.delete(id);
+  // 地板亮起特效：疊三層加亮的扇形，往上飄淡出
+  [[.07,1],[.5,.7],[1.1,.45]].forEach(([y,k],i)=>{ const m=sectorMesh(id,0xff8fb0,1,y);
+    m.material.blending=T.AdditiveBlending; m.material.opacity=.9*k; m.userData.rise=.8*(i+1); addFx(m,1.1+i*.15); });
+  const base=roseMesh[id]; if(base){ base.userData.flashUntil=t+1.1; } }); }
+let arrowTexC=null;
+function arrowTex(){ if(arrowTexC) return arrowTexC; const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const g=cv.getContext('2d');
+  g.fillStyle='#ffe27a'; g.shadowColor='#ffb000'; g.shadowBlur=14; g.beginPath(); g.moveTo(20,48); g.lineTo(150,48); g.lineTo(150,18); g.lineTo(236,64); g.lineTo(150,110); g.lineTo(150,80); g.lineTo(20,80); g.closePath(); g.fill();
+  return arrowTexC=canvasTex(cv); }
+function circleTiles(cx,cz,R){ const s=new Set(); const add=(x,z)=>{ const i=tileOf(x,z); if(typeof i==='number') s.add(i); };
+  add(cx,cz); for(let k=0;k<36;k++){ const a=k/36*Math.PI*2; add(cx+Math.cos(a)*R,cz+Math.sin(a)*R); add(cx+Math.cos(a)*R*.5,cz+Math.sin(a)*R*.5); } return s; }
+function coneTiles(c,half){ const s=new Set(); for(let a=c-half;a<=c+half;a+=1.5){ const w=Math.floor(((a%360)+360)%360/45)%8; s.add(w); s.add(8+w); } return s; }
+const dirName=a=>MARK_NAME[(Math.round(a/45)*45)%360]+' 方向';
+const shuffle=arr=>{ for(let i=arr.length-1;i>0;i--){ const j=rand(i+1); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; };
+
+/* 一式：Roseblood Bloom → Alexandrian Thunder II（3 道旋轉扇形）→ Thunder III（腳下雷圈散開）→ Thorned Catharsis */
+function bloom1(next){
+  // 固定配置（XivStrat 場地圖 1）：內圈東～西南 3 塊相連暗磚
+  const w0=2, set=floorSet(1);
+  setCast('Roseblood Bloom','場地出現玫瑰磚（亮磚＝蓄水池，會連鎖）',4);
+  setPlan(m=>posAt(CLOCK[m.id],6),.3);
+  advice='一式：全員到內圈東～西南那 3 塊相連的暗磚';
+  at(t+1.2,()=>setRose(set));
+  at(t+4,()=>{ cast=null; thunder2(w0,()=>at(t+1,()=>thunder3(()=>at(t+1,()=>{
+    setCast('Thorned Catharsis','全體 AOE',4); advice='';
+    at(t+4,()=>{ screenFlash(); cast=null; next(); });
+  })))); });
+}
+function thunder2(w0,next){
+  // 3 道 45° 扇形，起始時空隙正好在 3 塊暗磚的正中間，之後順／逆時針轉，跟著扇形後面走（被掃過的紅磚已引爆、變安全）
+  const dir=Math.random()<.5?1:-1, STEP=25, HALF=22.5, arcA=45*w0;
+  // 起始：其中一道扇形的後緣剛好在 3 塊暗磚的正中間（順時針時蓋住中間偏順時針那一半），全員貼在它後面追
+  const g0 = arcA+67.5 - dir*37.5;
+  const gapAt=k=>g0+dir*STEP*k, conesAt=k=>[60,180,300].map(o=>gapAt(k)+o);
+  const T0=t+5, GAP=1.4, NH=5;
+  setCast('Alexandrian Thunder II',`3 道扇形，${dir>0?'順':'逆'}時針旋轉`,5);
+  let curK=0;
+  const order=['MT','ST','H1','H2','D1','D2','D3','D4'];
+  setPlan(m=>{ const i=order.indexOf(m.id); return posAt(gapAt(curK)+dir*19+((i%4)-1.5)*6, i<4?4.6:6.6); },.8);
+  advice=`Thunder II：全員站內圈 3 塊暗磚的中間，扇形${dir>0?'順':'逆'}時針轉，跟在扇形後面往${dir>0?'順':'逆'}時針走`;
+  const tele=k=>{ const life=k===0?5:GAP; conesAt(k).forEach(c=>{ addFx(coneMesh(dirOf(c),HALF*Math.PI/180,16,0xffd34d,.22,.085),life,false);
+      // 旋轉方向箭頭：放在扇形前緣
+      const a=c+dir*(HALF+7), p=posAt(a,11), r=a*Math.PI/180, tx=dir*Math.cos(r), tz=dir*Math.sin(r);
+      const ar=new T.Mesh(new T.PlaneGeometry(3.4,1.7).rotateX(-Math.PI/2),new T.MeshBasicMaterial({ map:arrowTex(), transparent:true, depthWrite:false }));
+      ar.position.set(p.x,.11,p.z); ar.rotation.y=Math.atan2(-tz,tx); addFx(ar,life,false); }); };
+  { const lb=makeLabel(dir>0?'順時針 ↻':'逆時針 ↺','#ffe27a'); lb.position.set(0,6.6,0); lb.scale.multiplyScalar(1.7); addFx(lb,5+(NH-1)*GAP+.4,false); }
+  tele(0);
+  for(let k=0;k<NH;k++) at(T0+k*GAP,()=>{
+    if(state!=='running') return;
+    const cones=conesAt(k), reasons=[];
+    cones.forEach(c=>strongFlash(coneMesh(dirOf(c),HALF*Math.PI/180,16,0xffe066,.9,.09)));
+    const hitTiles=new Set(); cones.forEach(c=>coneTiles(c,HALF).forEach(i=>hitTiles.add(i)));
+    const boom=roseComponents(hitTiles); explode(boom);
+    members.forEach(m=>{ if(m.dead) return; const r=Math.hypot(m.x,m.z), a=angOfPt(m.x,m.z), tid=tileOf(m.x,m.z);
+      if(r>.5 && cones.some(c=>angDiff(a,c)<=HALF)) reasons.push(`${who(m)} 被第 ${k+1} 道雷擊扇形打到。`);
+      else if(boom.has(tid)) reasons.push(`${who(m)} 站在被引爆的玫瑰磚上（雷擊碰到亮磚，相連的亮磚全部爆炸）。`);
+      else if(tid==='center') reasons.push(`${who(m)} 站在中央血池裡。`); });
+    if(reasons.length) return fail(`Thunder II 第 ${k+1} 擊`,reasons);
+    curK=k+1; members.forEach(m=>m.reactAt=t+.15+Math.random()*.2);
+    if(k<NH-1) tele(k+1); else next();
+  });
+}
+function thunder3(next){
+  const R=2.5, LEN=5;
+  setCast('Alexandrian Thunder III','每人腳下雷圈，散開、雷圈不能碰到亮磚',LEN);
+  // 候選點：沒有紅磚的格子（含已引爆變安全的），雷圈不能碰到剩下的紅磚
+  const cand=[]; for(let w=0;w<8;w++){ const a=45*w+22.5;
+    if(!roseSet.has(8+w)){ cand.push({a,r:10.6}); cand.push({a,r:13.4}); }
+    if(!roseSet.has(w)) cand.push({a,r:5.5}); }
+  const okC=c=>{ const p=posAt(c.a,c.r); return ![...circleTiles(p.x,p.z,R)].some(i=>roseSet.has(i)); };
+  const spots=[];
+  for(const c of [...cand.filter(okC).filter(c=>c.r>6), ...cand.filter(okC).filter(c=>c.r<6), ...cand]){
+    if(spots.length>=8) break; const p=posAt(c.a,c.r);
+    if(spots.every(s=>{ const q=posAt(s.a,s.r); return Math.hypot(p.x-q.x,p.z-q.z)>=2.7; })) spots.push(c); }
+  spots.sort((x,y)=>x.a-y.a);
+  const order=['MT','ST','H1','H2','D1','D2','D3','D4'];
+  const spotOf=m=>{ const s=spots[order.indexOf(m.id)]; return s; };
+  setPlan(m=>{ const s=spotOf(m); return posAt(s.a,s.r); },.4);
+  const ps=spotOf(player);
+  advice=`Thunder III：到 ${dirName(ps.a)}、離中心約 ${ps.r.toFixed(0)} m（已爆過的紅磚也安全），雷圈別碰到剩下的紅磚或別人`;
+  if(cfg.hintMe){ const p=posAt(ps.a,ps.r); addFx(ringMesh(p.x,p.z,.5,.75,0xe9c46a,.95,.1),LEN,false); }
+  const marks=members.map(m=>{ const g=ringMesh(0,0,R-.12,R,0xffd34d,.9,.095); scene.add(g); fx.push({obj:g,born:t,until:t+LEN,fade:false}); return {m,g}; });
+  ticks.push(()=>{ marks.forEach(k=>k.g.position.set(k.m.x,.095,k.m.z)); return state!=='running' || !cast || cast.name!=='Alexandrian Thunder III'; });
+  at(t+LEN,()=>{
+    if(state!=='running') return;
+    cast=null; marks.forEach(k=>scene.remove(k.g)); const reasons=[], touched=new Set();
+    members.forEach(src=>{ if(src.dead) return;
+      strongFlash(circleMesh(src.x,src.z,R,0xffe066,.85,.09),[ringMesh(src.x,src.z,R-.2,R,0xffffff,1,.1)]);
+      circleTiles(src.x,src.z,R).forEach(i=>touched.add(i));
+      members.forEach(m=>{ if(m!==src && !m.dead && dist(m,src)<R) reasons.push(`${who(m)} 被 ${who(src)} 的雷圈打到。`); });
+    });
+    const boom=roseComponents(touched); explode(boom);
+    members.forEach(m=>{ const tid=tileOf(m.x,m.z); if(!m.dead && boom.has(tid)) reasons.push(`${who(m)} 站的亮磚被引爆（有人的雷圈碰到了相連的亮磚）。`); });
+    if(reasons.length) return fail('Thunder III',[...new Set(reasons)]);
+    advice=''; next();
+  });
+}
+
+/* 二式（依 XivStrat 圖）：固定紅磚配置 2；Thunder Slash 六刀（60° 扇形，順序 1北→2南→3東北→4西南→5東南→6西北，每刀約 1 秒）
+   ＋ Thunder IV：第 1 刀同時鋼鐵或月環、第 4 刀同時另一個（鋼鐵／月環會引爆紅磚，劈砍不會）→ Specter of the Lost
+   解法：先鋼鐵 → 4 外（單塊暗磚）→ 1 判定後到 6 內 → 4 判定後回 4；先月環 → 4 內 → 6 外 → 4 */
+const FLOOR={ 1:{ inner:[0,1,5,6], outer:[0,3,5] }, 2:{ inner:[0,1,3,4,7], outer:[0,3,4,6,7] }, 3:{ inner:[0,2], outer:[1,3,5,7] },
+  4:{ inner:[1,6], outer:[2,5,7] }, 5:{ inner:[2,3,6,7], outer:[2,3,6,7] }, 6:{ inner:[2,6], outer:[1,5] } };
+const floorSet=n=>new Set([...FLOOR[n].inner, ...FLOOR[n].outer.map(w=>8+w)]);
+function compsIn(sim,hitIds){ const out=new Set(), st=[...hitIds].filter(i=>sim.has(i));
+  while(st.length){ const i=st.pop(); if(out.has(i)) continue; out.add(i); tileNeighbors(i).forEach(n=>{ if(sim.has(n)&&!out.has(n)) st.push(n); }); } return out; }
+function inShape(x,z,sh){ const r=Math.hypot(x,z);
+  if(sh.type==='circle') return r<8;
+  if(sh.type==='donut') return r>8;
+  return r>.5 && angDiff(angOfPt(x,z),sh.c)<=sh.half; }
+const SHAPE_NAME={ circle:'鋼鐵（圓形）', donut:'月環', cone:'雷鳴劍扇形' };
+function shapeMesh(sh,color,op,y){ if(sh.type==='circle') return circleMesh(0,0,8,color,op,y);
+  if(sh.type==='donut') return ringMesh(0,0,8,16,color,op,y);
+  return coneMesh(dirOf(sh.c),sh.half*Math.PI/180,16,color,op,y); }
+function bloom2(next){
+  const GAP=1.1, set=floorSet(2), first=window.__forceFirst||(Math.random()<.5?'circle':'donut'), second=first==='circle'?'donut':'circle';
+  const SLASH=[0,180,60,240,120,300], SECT=['北','南','東北','西南','東南','西北'];
+  const hits=SLASH.map((c,k)=>({ k, shapes:[{type:'cone',c,half:30}, ...(k===0?[{type:first}]:k===3?[{type:second}]:[])] }));
+  // 依解法的站位：A = 4 號區（西南）單塊暗磚、B = 6 號區（西北）、C = 回到 4 號區
+  // 先鋼鐵（D 側）：4 外單塊暗磚 → 6 內 → 4；先月環（B 側）：內圈東側單塊暗磚 → 5 外 → 3
+  const A = first==='circle' ? {a:247.5,r:12} : {a:112.5,r:5.5};
+  const B = first==='circle' ? {a:295,r:5.5} : {a:110,r:12};
+  const C = first==='circle' ? {a:240,r:10} : {a:60,r:10};
+  const spotFor=k=> k<=0 ? A : k<=3 ? B : C;   // k = 已判定完的刀數
+  setCast('Roseblood: 2nd Bloom','魔法陣展開 · 2 式',4);
+  setPlan(m=>posAt(CLOCK[m.id],6),.3);
+  advice='二式：鋼鐵／月環會引爆紅磚，劈砍不會';
+  at(t+1.2,()=>setRose(set));
+  at(t+4,()=>{
+    const LEN=6, T0=t+LEN;
+    setCast('Thunder Slash ＋ Thunder IV',first==='circle'?'先鋼鐵、第 4 刀月環':'先月環、第 4 刀鋼鐵',LEN);
+    advice = first==='circle'
+      ? '先鋼鐵（走 D 側）：全員到 D～4 之間外圈那塊單獨的暗磚集合'
+      : '先月環（走 B 側）：全員到 B 下方內圈那塊單獨的暗磚集合';
+    let done=0;
+    setPlan(m=>{ const s=spotFor(done), o=ROLE_IDS.indexOf(m.id)/8*Math.PI*2, p=posAt(s.a,s.r); return { x:p.x+Math.cos(o)*.5, z:p.z+Math.sin(o)*.5 }; },.6);
+    const hintAt=(k,life)=>{ if(!cfg.hintMe) return; const s=spotFor(k), p=posAt(s.a,s.r); addFx(ringMesh(p.x,p.z,.5,.75,0xe9c46a,.95,.1),life,false); };
+    // 預兆：六刀依序編號、鋼鐵／月環範圍
+    // 鋼鐵／月環預兆：王腳下的藍圈；鋼鐵＝內圈（藍色實心）不能站，月環＝外圈不能站。第一個在讀條時出現，第二個在第 1 刀後出現
+    const ironTele=(type,life)=>{ const g=new T.Group();
+      const body = type==='circle' ? circleMesh(0,0,8,0x3d8cff,.42,.11) : ringMesh(0,0,8,16,0x3d8cff,.42,.11);
+      const edge = ringMesh(0,0,7.75,8.25,0x9fd4ff,1,.12);
+      body.renderOrder=edge.renderOrder=8; g.add(body,edge);
+      const lb=makeLabel(type==='circle'?'鋼鐵：內圈危險':'月環：外圈危險','#9fd4ff'); lb.position.set(0,5.4,0); lb.scale.multiplyScalar(1.6); g.add(lb);
+      addFx(g,life,false); };
+    ironTele(first,LEN);   // 讀條一開始就出現
+    at(t+2,()=>{ hits.forEach(h=>{ h.shapes.filter(sh=>sh.type==='cone').forEach(sh=>addFx(shapeMesh(sh,0xffa040,.24,.083+h.k*.002),LEN-2+h.k*GAP,false)); 
+        const p=posAt(SLASH[h.k],12.5), lb=makeLabel(String(h.k+1),'#ffd27a'); lb.position.set(p.x,1.2,p.z); addFx(lb,LEN-2+h.k*GAP,false); });
+      hintAt(0,LEN-2); });
+    hits.forEach(h=>at(T0+h.k*GAP,()=>{
+      if(state!=='running') return;
+      const k=h.k, reasons=[], touched=new Set();
+      h.shapes.forEach(sh=>{ const big=sh.type!=='cone';
+        strongFlash(shapeMesh(sh,big?0x8fd0ff:0xffd060,big?.85:.8,.09), big?[sh.type==='circle'?ringMesh(0,0,7.6,8,0xffffff,1,.1):ringMesh(0,0,8,8.4,0xffffff,1,.1)]:null);
+        if(sh.type==='circle') for(let w=0;w<8;w++) touched.add(w);
+        if(sh.type==='donut') for(let w=0;w<8;w++) touched.add(8+w); });
+      const boom=roseComponents(touched); explode(boom);
+      members.forEach(m=>{ if(m.dead) return; const tid=tileOf(m.x,m.z), sh=h.shapes.find(s=>inShape(m.x,m.z,s));
+        if(sh) reasons.push(`${who(m)} 被第 ${k+1} 刀（${SECT[k]}）${sh.type==='cone'?'的劈砍':'時的'+SHAPE_NAME[sh.type]}打到。`);
+        else if(boom.has(tid)) reasons.push(`${who(m)} 站在被${k===0?SHAPE_NAME[first]:SHAPE_NAME[second]}連鎖引爆的紅磚上。`);
+        else if(tid==='center') reasons.push(`${who(m)} 站在中央血池裡。`); });
+      if(reasons.length) return fail(`二式 第 ${k+1} 刀`,reasons);
+      cast=null; done=k+1; members.forEach(m=>m.reactAt=t+.1+Math.random()*.15);
+      if(k===0) ironTele(second,3*GAP);
+      if(k===0){ advice = first==='circle' ? '鋼鐵過了 → 穿到 D 上方（6 號區）內圈，等第 4 刀＋月環' : '月環過了 → 穿到 B 下方（5 號區）外圈，等第 4 刀＋鋼鐵'; hintAt(1,3*GAP); }
+      if(k===3){ advice = first==='circle' ? '第 4 刀過了 → 回到 4 號區（西南），躲最後的 5、6 刀' : '第 4 刀過了 → 馬上到 3 號區（東北），5 刀很快就來'; hintAt(4,2*GAP); }
+      if(k===5){ advice=''; at(t+1.2,()=>specter(next)); }
+    }));
+  });
+}
+
+/* 三式（依 XivStrat）：場地圖 3；4 座塔在外圈 4 塊紅磚上；一個職能被點 🌹（Emblazon），站的灰磚會變紅；
+   踩塔會引爆與塔相連的紅磚 → 紅磚不能把兩座塔連起來，否則全滅。
+   XivStrat 以「內圈兩塊紅磚中間那塊灰磚」為新的 12 點（實際約 67.5°）。 */
+function bloom3(next){
+  const set=floorSet(3), roseGrp=Math.random()<.5?'S':'D', TOWER_R=2.6;
+  const TW=[67.5,157.5,247.5,337.5].map(a=>({ a, ...posAt(a,13.6), tile:8+Math.floor(a/45) }));
+  const NEWNORTH=67.5, fa=f=>(f+NEWNORTH)%360;       // 圖上角度 → 實際角度
+  const ROSE_SPOT = roseGrp==='S' ? { MT:fa(0), H2:fa(135), ST:fa(180), H1:fa(225) } : { D3:fa(0), D4:fa(135), D2:fa(180), D1:fa(225) };
+  const TOWER_OF  = roseGrp==='S' ? { D3:0, D4:1, D2:2, D1:3 } : { MT:0, H2:1, ST:2, H1:3 };
+  const AFTER = { [fa(0)]:{a:22.5,r:10.5}, [fa(135)]:{a:157.5,r:5.5}, [fa(180)]:{a:202.5,r:10.5}, [fa(225)]:{a:337.5,r:5.5} };  // 放完花躲到不相連的灰磚
+  // 等點名時的預站位（圖：XivStrat 三式機制圖）
+  const PRE = { MT:{a:fa(354),r:6.5}, ST:{a:fa(118),r:6}, D1:{a:fa(241),r:8.6}, D2:{a:fa(229),r:6.2}, D3:{a:fa(192),r:7}, D4:{a:fa(168),r:7}, H1:{a:fa(146),r:8.3}, H2:{a:fa(132),r:10.4} };
+  setCast('Roseblood: 3rd Bloom','魔法陣展開 · 3 式',4);
+  advice='三式：以內圈兩塊紅磚中間那塊灰磚為新的 12 點，先到預備位置';
+  setPlan(m=>{ const p=PRE[m.id]; return posAt(p.a,p.r); },.3);
+  at(t+1.2,()=>{ setRose(set);
+    // 標出「新 12 點」方向，方便對照 XivStrat 的圖
+    const p=posAt(NEWNORTH,15.2), lb=makeLabel('新 12 點','#ffe27a'); lb.position.set(p.x,1.6,p.z); lb.scale.multiplyScalar(1.3); addFx(lb,22,false);
+    const ar=new T.Mesh(new T.PlaneGeometry(3,1.5).rotateX(-Math.PI/2),new T.MeshBasicMaterial({ map:arrowTex(), transparent:true, depthWrite:false }));
+    const q=posAt(NEWNORTH,12.6), d=dirOf(NEWNORTH); ar.position.set(q.x,.12,q.z); ar.rotation.y=Math.atan2(-d.z,d.x); addFx(ar,22,false); });
+  let phase='pre';
+  at(t+4,()=>{
+    // 4 座塔
+    TW.forEach(tw=>{ const g=new T.Group();
+      const cyl=new T.Mesh(new T.CylinderGeometry(TOWER_R,TOWER_R,3,40,1,true),new T.MeshBasicMaterial({ color:0x9fe8ff, transparent:true, opacity:.25, side:T.DoubleSide, depthWrite:false }));
+      cyl.position.y=1.5; g.add(cyl, ringMesh(0,0,TOWER_R-.2,TOWER_R,0xdff8ff,1)); g.position.set(tw.x,0,tw.z); addFx(g,13,false); });
+    setCast('Bud of Valor ＋ Emblazon',`${GROUP_NAME[roseGrp]}被點 🌹，其他人踩塔`,7);
+    const marked=members.filter(m=>m.grp===roseGrp);
+    marked.forEach(m=>setTag(m,'🌹 放花','#ff6b8a'));
+    const roseRings=marked.map(m=>{ const g=ringMesh(0,0,.9,1.2,0xff3a6e,1,.11); scene.add(g); fx.push({obj:g,born:t,until:t+7,fade:false}); return {m,g}; });
+    ticks.push(()=>{ roseRings.forEach(k=>k.g.position.set(k.m.x,.11,k.m.z)); return state!=='running' || phase!=='pre'; });
+    setPlan(m=> ROSE_SPOT[m.id]!==undefined ? posAt(ROSE_SPOT[m.id],5.5) : (()=>{ const tw=TW[TOWER_OF[m.id]]; return { x:tw.x, z:tw.z }; })(), .6);
+    const mine = ROSE_SPOT[player.id]!==undefined
+      ? `你被點 🌹：到新 12 點起算 ${['正上（12 點）','右下（約 4～5 點）','正下（6 點）','左下（約 7～8 點）'][[0,135,180,225].indexOf(Math.round((ROSE_SPOT[player.id]-NEWNORTH+360)%360))]} 的內圈灰磚放花`
+      : `你踩塔：去新 12 點起算 ${['正上','右','正下','左'][TOWER_OF[player.id]]} 的塔`;
+    advice=mine;
+    if(cfg.hintMe){ const p = ROSE_SPOT[player.id]!==undefined ? posAt(ROSE_SPOT[player.id],5.5) : TW[TOWER_OF[player.id]]; addFx(ringMesh(p.x,p.z,.5,.75,0xe9c46a,.95,.12),7,false); }
+    // 放花：腳下的灰磚變紅
+    at(t+7,()=>{
+      if(state!=='running') return;
+      phase='drop'; const reasons=[];
+      marked.forEach(m=>{ setTag(m,''); const tid=tileOf(m.x,m.z);
+        if(tid==='center'||tid===null){ reasons.push(`${who(m)} 的 🌹 沒放在地板上。`); return; }
+        if(roseSet.has(tid)) reasons.push(`${who(m)} 站在紅磚上放 🌹，直接爆炸。`);
+        roseSet.add(tid); const sm=roseMesh[tid]; if(sm){ sm.material.color.setHex(0xc8204e); sm.material.opacity=.62; }
+        strongFlash(sectorMesh(tid,0xff5c8a,.8,.07));
+        m.vuln=t+9; });
+      if(reasons.length) return fail('三式 放花',reasons);
+      cast=null;
+      setCast('Alexandrian Holy','塔判定，引爆與塔相連的紅磚',5);
+      advice = ROSE_SPOT[player.id]!==undefined ? '放完花了：你有魔法易傷，馬上離開紅磚，躲到不相連的灰磚上' : '繼續踩塔；確認沒有紅磚把兩座塔連在一起';
+      setPlan(m=>{ if(ROSE_SPOT[m.id]===undefined){ const tw=TW[TOWER_OF[m.id]]; return { x:tw.x, z:tw.z }; } const s=AFTER[ROSE_SPOT[m.id]]; return posAt(s.a,s.r); },.3);
+      if(cfg.hintMe && ROSE_SPOT[player.id]!==undefined){ const s=AFTER[ROSE_SPOT[player.id]], p=posAt(s.a,s.r); addFx(ringMesh(p.x,p.z,.5,.75,0xe9c46a,.95,.12),5,false); }
+      // 塔判定
+      at(t+5,()=>{
+        if(state!=='running') return;
+        const reasons=[], boomAll=new Set();
+        const compOf=tw=>roseComponents(new Set([tw.tile]));
+        TW.forEach((tw,i)=>{
+          const comp=compOf(tw);
+          const soak=members.filter(m=>!m.dead && (Math.hypot(m.x-tw.x,m.z-tw.z)<=TOWER_R || (comp.has(tileOf(m.x,m.z)) && !(m.vuln>t))));
+          if(!soak.length) reasons.push(`新 12 點起算 ${['正上','右','正下','左'][i]} 的塔沒人踩。`);
+          const linked=TW.filter((o,j)=>j!==i && comp.has(o.tile));
+          if(linked.length && i<TW.indexOf(linked[0])) reasons.push(`紅磚把 ${['正上','右','正下','左'][i]} 塔和 ${['正上','右','正下','左'][TW.indexOf(linked[0])]} 塔連在一起 → 全滅。`);
+          comp.forEach(id=>boomAll.add(id));
+          strongFlash(circleMesh(tw.x,tw.z,TOWER_R,0xbff4ff,.85));
+        });
+        explode(boomAll);
+        members.forEach(m=>{ if(!m.dead && m.vuln>t && boomAll.has(tileOf(m.x,m.z))) reasons.push(`${who(m)} 帶著魔法易傷站在被引爆的紅磚上。`); });
+        if(reasons.length) return fail('三式 踩塔',[...new Set(reasons)]);
+        phase='done'; cast=null;
+        setCast('Thorned Catharsis','全體 AOE',4); advice='';
+        setPlan(m=>posAt(CLOCK[m.id],6),.5);
+        at(t+4,()=>{ screenFlash(); cast=null; next(); });
+      });
+    });
+  });
+}
+
+/* 三式後：生成幻影 ＋ 凌空錯（13 秒讀條）＋ 震驚（一個職能被點持續月環，不能動）＋ 王國中放逐（TH、DPS 各一個分攤）
+   XivStrat：開始時 TH 在 A 方向目標圈上集合、DPS 在 C 方向目標圈上集合；分攤後由「非月環組」引導第 1 刀，
+   之後照 AABB（1、3 刀後換）／ABBA（2 刀後換）。 */
+function escelons2(next){
+  const CAST_LEN=13, L=ESC_LAYOUTS.zy, RING=2.6, DIN=1.5, DOUT=3.2;
+  const donutGrp=Math.random()<.5?'S':'D', other=donutGrp==='S'?'D':'S';
+  coneGeo && coneGeo.dispose();
+  coneGeo = new T.CircleGeometry(30,24,-cfg.half,cfg.half*2).rotateX(-Math.PI/2);
+  setCast('幻影生成','召喚分身',3);
+  const sh=makeShade(180); fx.push({ obj:sh.g, born:t, until:t+40, fade:false });
+  setPlan(m=>posAt(m.grp==='S'?0:180, RING+.4),.3);
+  advice='TH 到 A 方向目標圈上、DPS 到 C 方向目標圈上集合';
+  at(t+3.5,()=>{
+    esc = { start:t, castLen:CAST_LEN, seq: cfg.seqMode==='rand' ? randomSeq() : cfg.seqMode.split(','), hitIdx:0, next, L,
+            first:other, exempt:(m,k)=>k===0 && m.grp===donutGrp };
+    esc.hitTimes=[0,1,2,3].map(k=>esc.start+CAST_LEN+0.8+k*cfg.gap);
+    setCast('凌空錯',"Escelons' Fall（13 秒）",CAST_LEN);
+    const stackPos=g=>{ const p=posAt(g==='S'?0:180,RING); return p; };
+    let stage='stack';
+    setPlan(m=>{ const p=stackPos(m.grp), o=ROLE_IDS.indexOf(m.id)/8*Math.PI*2;
+      if(stage==='stack' || (stage==='hold' && m.grp===donutGrp)) return { x:p.x+Math.cos(o)*.45, z:p.z+Math.sin(o)*.45 };
+      return posAt(L.ang[m.id],(wantClose(m,esc.hitIdx)?L.close:L.far)+m.jit); },.3);
+    // 王國中放逐：TH、DPS 各一人分攤
+    const sT=members.filter(m=>m.grp==='S')[rand(4)], sD=members.filter(m=>m.grp==='D')[rand(4)];
+    setTag(sT,'分攤','#e9c46a'); setTag(sD,'分攤','#e9c46a');
+    advice=`先分攤：TH 在 A 側、DPS 在 C 側目標圈上；分攤後${GROUP_NAME[other]}去引導第 1 刀`;
+    at(t+4.3,()=>{
+      if(state!=='running') return;
+      const reasons=[];
+      [[sT,'S'],[sD,'D']].forEach(([s,g])=>{ strongFlash(circleMesh(s.x,s.z,3,0xffd36a,.8));
+        const out=members.filter(m=>m.grp===g && !m.dead && dist(m,s)>3); if(out.length) reasons.push(`${GROUP_NAME[g]}分攤時 ${out.map(who).join('、')} 不在 ${s.id} 的分攤圈內。`);
+        const extra=members.filter(m=>m.grp!==g && dist(m,s)<=3); if(extra.length) reasons.push(`${extra.map(who).join('、')} 跑進了${GROUP_NAME[g]}的分攤。`); });
+      setTag(sT,''); setTag(sD,'');
+      if(reasons.length) return fail('王國中放逐 分攤',reasons);
+      stage='hold';
+      members.forEach(m=>{ if(m.grp===donutGrp) setTag(m,'月環','#5fd0ff'); });
+      advice = player.grp===donutGrp ? '你被點持續月環：留在原地不要動，等第 1 刀過' : `你沒有月環：照第 1 刀「${esc.seq[0]==='close'?'近 → 往圈內一步':'遠 → 往圈外一步'}」分散引導`;
+    });
+    // 震驚：持續月環（讀條 3 秒，之後一直判定到第 1 刀）
+    at(t+6.7,()=>{
+      if(state!=='running') return;
+      const SLEN=3; setCast('震驚 Shock',`${GROUP_NAME[donutGrp]}持續月環（凌空錯讀條中）`,SLEN);
+      at(t+SLEN,()=>{
+        if(state!=='running') return;
+        setCast('凌空錯',"Escelons' Fall",esc.start+CAST_LEN-t); cast.start=esc.start; cast.len=CAST_LEN;
+        const centers=members.filter(m=>m.grp===donutGrp && !m.dead).map(m=>({ x:m.x, z:m.z, id:m.id }));
+        const until=esc.hitTimes[0]+.3;
+        centers.forEach(c=>{ addFx(ringMesh(c.x,c.z,DIN,DOUT,0x3d8cff,.4,.1),until-t,false); addFx(ringMesh(c.x,c.z,DOUT-.15,DOUT,0x9fd4ff,1,.11),until-t,false); });
+        ticks.push(()=>{ if(state!=='running' || t>until){ if(t>until) members.forEach(m=>{ if(m.grp===donutGrp) setTag(m,''); }); return true; }
+          for(const m of members){ if(m.dead) continue; for(const c of centers){ const d=Math.hypot(m.x-c.x,m.z-c.z);
+            if(d>DIN && d<DOUT){ fail('震驚 持續月環',[`${who(m)} 碰到了 ${c.id} 的持續月環（${m.grp===donutGrp?'被點月環的人不能移動':'沒月環的人要離月環 '+DOUT+' m 以上'}）。`]); return true; } } }
+          return false; });
+      });
+    });
+    // 第 1 刀之後月環消失，全員照凌空錯換位
+    at(esc.hitTimes[0]+.05,()=>{ stage='free'; });
+    esc.hitTimes.forEach((ht,k)=>at(ht,()=>{ if(state==='running') escHit(k); }));
+    at(t+CAST_LEN*.4,()=>{ if(stage==='stack') return; });
+  });
+}
+
+/* 四式（依 XivStrat）：場地圖 4；一個職能全員 🌹、另一個職能全員雷點名。
+   花組固定放在南側（內圈 2、外圈 2），把南邊連成一大片紅磚（危險區）；雷組在北側散開，雷圈（約 4 m）不能碰到這片危險區。
+   接著王國強放逐：全員先到放花對面（北）集合，面向王 TH 往左（東）、DPS 往右（西），站進相連紅磚做 8 人分攤。 */
+function bloom4(next){
+  const set=floorSet(4), roseGrp=Math.random()<.5?'S':'D', R=4;
+  const SLOT_S={ MT:0, ST:1, H1:2, H2:3 }, SLOT_D={ D1:0, D2:1, D3:2, D4:3 };
+  const slot=m=>(m.grp==='S'?SLOT_S:SLOT_D)[m.id];
+  const ROSE=[{a:200,r:6},{a:160,r:6},{a:204,r:12},{a:150,r:12}];
+  const THUN=[{a:0,r:5.5},{a:11,r:14},{a:306,r:11.8},{a:56,r:13.8}];   // MT/D1? 依圖：內 N、外 N、左上、右上
+  const THUN_IDX={ S:{ MT:0, ST:1, H1:2, H2:3 }, D:{ D2:0, D1:1, D3:2, D4:3 } };
+  const isRose=m=>m.grp===roseGrp;
+  const spotOf=m=> isRose(m) ? ROSE[slot(m)] : THUN[THUN_IDX[m.grp][m.id]];
+  setCast('Roseblood: 4th Bloom','魔法陣展開 · 4 式',4);
+  // 先在南側 4 格安全區（內圈 2、外圈 2 的灰磚）集合，點名後放花組留下、雷組往北
+  setPlan(m=>{ const o=ROLE_IDS.indexOf(m.id)/8*Math.PI*2, p=posAt(180,8); return { x:p.x+Math.cos(o)*1.6, z:p.z+Math.sin(o)*1.6 }; },.3);
+  advice='四式：先到南側 4 格灰磚（安全區）集合，等點名';
+  at(t+1.2,()=>setRose(set));
+  at(t+4,()=>{
+    setCast('Emblazon ＋ 雷點名',`${GROUP_NAME[roseGrp]}放 🌹（南側固定位）、${GROUP_NAME[roseGrp==='S'?'D':'S']}雷點名（北側散開）`,7);
+    members.forEach(m=>setTag(m, isRose(m)?'🌹 放花':'⚡ 雷', isRose(m)?'#ff6b8a':'#ffe066'));
+    const marks=members.map(m=>{ const g=isRose(m)?ringMesh(0,0,.9,1.2,0xff3a6e,1,.11):ringMesh(0,0,R-.15,R,0xffe066,.95,.11); scene.add(g); fx.push({obj:g,born:t,until:t+8,fade:false}); return {m,g}; });
+    let live=true; ticks.push(()=>{ marks.forEach(k=>k.g.position.set(k.m.x,.11,k.m.z)); return state!=='running'||!live; });
+    setPlan(m=>{ const s=spotOf(m); return posAt(s.a,s.r); },.6);
+    const ps=spotOf(player);
+    advice = isRose(player) ? `你放 🌹：留在南側，站到${ps.r<8?'內圈':'外圈'}${ps.a>180?'偏西':'偏東'}那格灰磚` : `你是雷點名：離開南側往北散開，雷圈不能碰到南邊那片紅磚和別人`;
+    if(cfg.hintMe){ const p=posAt(ps.a,ps.r); addFx(ringMesh(p.x,p.z,.5,.75,0xe9c46a,.95,.12),8,false); }
+    let dangerComp=new Set();
+    at(t+7,()=>{
+      if(state!=='running') return;
+      const reasons=[], roseTiles=new Set();
+      members.filter(isRose).forEach(m=>{ setTag(m,''); const tid=tileOf(m.x,m.z);
+        if(typeof tid!=='number'){ reasons.push(`${who(m)} 的 🌹 沒放在地板上。`); return; }
+        if(roseSet.has(tid)) reasons.push(`${who(m)} 站在紅磚上放 🌹，直接爆炸。`);
+        roseSet.add(tid); roseTiles.add(tid); const sm=roseMesh[tid]; if(sm){ sm.material.color.setHex(0xc8204e); sm.material.opacity=.62; }
+        strongFlash(sectorMesh(tid,0xff5c8a,.8,.07)); });
+      if(reasons.length) return fail('四式 放花',reasons);
+      dangerComp=roseComponents(roseTiles);
+      // 標出危險區
+      dangerComp.forEach(id=>addFx(sectorMesh(id,0xff2050,.35,.075),12,false));
+    });
+    at(t+8,()=>{
+      if(state!=='running') return;
+      live=false; cast=null; const reasons=[], touched=new Set();
+      members.filter(m=>!isRose(m)).forEach(src=>{ setTag(src,'');
+        strongFlash(circleMesh(src.x,src.z,R,0xffe066,.85,.09),[ringMesh(src.x,src.z,R-.2,R,0xffffff,1,.1)]);
+        const tiles=circleTiles(src.x,src.z,R);
+        if([...tiles].some(i=>dangerComp.has(i))) reasons.push(`${who(src)} 的雷圈碰到南側花組的紅磚區 → 連鎖爆炸炸死花點名組。`);
+        tiles.forEach(i=>{ if(!dangerComp.has(i)) touched.add(i); });
+        members.forEach(m=>{ if(m!==src && dist(m,src)<R) reasons.push(`${who(m)} 被 ${who(src)} 的雷圈打到。`); });
+      });
+      explode(roseComponents(touched));
+      if(reasons.length) return fail('四式 雷點名',[...new Set(reasons)]);
+      banish3(dangerComp,next);
+    });
+  });
+}
+function banish3(comp,next){
+  const LEN=6, TN={a:100,r:12.5}, DP={a:260,r:12.5}, SR=3;
+  setCast('王國強放逐','TH、DPS 各一個分攤：站進相連的紅磚，8 人平攤',LEN);
+  let stage='gather';
+  const sT=members.filter(m=>m.grp==='S')[rand(4)], sD=members.filter(m=>m.grp==='D')[rand(4)];
+  setPlan(m=>{ const o=ROLE_IDS.indexOf(m.id)/8*Math.PI*2;
+    if(stage==='gather'){ const p=posAt(0,5); return { x:p.x+Math.cos(o)*.8, z:p.z+Math.sin(o)*.8 }; }
+    const s=m.grp==='S'?TN:DP, p=posAt(s.a,s.r); return { x:p.x+Math.cos(o)*.7, z:p.z+Math.sin(o)*.7 }; },.3);
+  advice='放完花：全員到放花對面（北側）集合';
+  at(t+1.5,()=>{ if(state!=='running') return; stage='go';
+    // 分攤 AOE 圈：TH、DPS 各一個，跟著被點的人
+    [[sT,'#e9c46a'],[sD,'#e9c46a']].forEach(([m,c])=>setTag(m,'分攤',c));
+    const rings=[sT,sD].map(m=>{ const g=new T.Group(); g.add(circleMesh(0,0,SR,0xffc940,.22,.1), ringMesh(0,0,SR-.18,SR,0xffe08a,1,.11)); scene.add(g); fx.push({obj:g,born:t,until:t+LEN,fade:false}); return {m,g}; });
+    ticks.push(()=>{ rings.forEach(k=>k.g.position.set(k.m.x,0,k.m.z)); return state!=='running' || !cast || cast.name!=='王國強放逐'; });
+    members.forEach(m=>m.reactAt=t+.2+Math.random()*.2);
+    advice=`點名了：面向王，${player.grp==='S'?'TH 往左（東側）':'DPS 往右（西側）'}，進${player.grp==='S'?sT.id:sD.id}的分攤圈，站在跟南側相連的紅磚上`;
+    if(cfg.hintMe){ const s=player.grp==='S'?TN:DP, p=posAt(s.a,s.r); addFx(ringMesh(p.x,p.z,.5,.75,0xe9c46a,.95,.12),LEN-1.5,false); } });
+  at(t+LEN,()=>{
+    if(state!=='running') return;
+    cast=null; setTag(sT,''); setTag(sD,''); const reasons=[];
+    [[sT,'S'],[sD,'D']].forEach(([s,g])=>{ strongFlash(circleMesh(s.x,s.z,SR,0xffd36a,.85));
+      const out=members.filter(m=>m.grp===g && !m.dead && dist(m,s)>SR); if(out.length) reasons.push(`${GROUP_NAME[g]}的 ${out.map(who).join('、')} 不在 ${s.id} 的分攤圈內。`);
+      if(!comp.has(tileOf(s.x,s.z))) reasons.push(`${who(s)} 的分攤圈不在相連的紅磚上，傷害沒有分到另一組。`); });
+    const off=members.filter(m=>!m.dead && !comp.has(tileOf(m.x,m.z))); if(off.length) reasons.push(`${off.map(who).join('、')} 沒站在相連的紅磚上。`);
+    comp.forEach(id=>strongFlash(sectorMesh(id,0xffd36a,.7,.08)));
+    if(reasons.length) return fail('王國強放逐',reasons);
+    explode(comp);
+    setCast('Thorned Catharsis','全體 AOE（玫瑰滌）',5); advice='';
+    setPlan(m=>posAt(CLOCK[m.id],6),.5);
+    at(t+5,()=>{ screenFlash(); cast=null; next(); });
+  });
+}
+/* 四式後：幻影生成（A、C 各一分身）＋ 凌空錯：先躲 A 分身的半場刀 → 引導凌空錯 → 第 4 刀後躲 C 分身的半場刀 */
+function escelons3(next){
+  const CAST_LEN=13, L=ESC_LAYOUTS.zy;
+  coneGeo && coneGeo.dispose();
+  coneGeo = new T.CircleGeometry(30,24,-cfg.half,cfg.half*2).rotateX(-Math.PI/2);
+  setCast('幻影生成','A、C 各召喚一個分身',3);
+  const sides={ A:Math.random()<.5?'E':'W', C:Math.random()<.5?'E':'W' };   // 危險的半邊
+  const shA=makeShade(0), shC=makeShade(180);
+  [shA,shC].forEach(sh=>{ fx.push({ obj:sh.g, born:t, until:t+40, fade:false }); fx.push({ obj:sh.sword, born:t, until:t+40, fade:false }); });
+  const setSword=(sh,side)=>{ const sx=side==='E'?1:-1; sh.sword.position.set(sh.x+sx*1.3,2.4,sh.z); sh.sword.rotation.set(0,0,-sx*.5); sh.sword.visible=true; sh.g.rotation.y=Math.atan2(-sh.x,-sh.z); };
+  setSword(shA,sides.A); setSword(shC,sides.C);
+  const halfPlane=(side,color,op)=>{ const m=new T.Mesh(new T.PlaneGeometry(17,34).rotateX(-Math.PI/2),groundMat(color,op)); m.position.set(side==='E'?8.5:-8.5,.075,0); return m; };
+  const safeX = side => side==='E' ? -1 : 1;
+  // 一開始先站好凌空錯的位置（TH 王前、DPS 王後），快判定時再躲 A 分身的半場刀，躲完站回去
+  setPlan(m=>posAt(L.ang[m.id],L.start),.3);
+  advice=`先站好凌空錯的位置；A 的分身劍在${sides.A==='E'?'東':'西'}側，等一下要躲到${sides.A==='E'?'西':'東'}半場`;
+  if(cfg.hintMe) addFx(halfPlane(sides.A,0xd08cff,.14),16,false);
+  at(t+3,()=>{
+    esc = { start:t, castLen:CAST_LEN, seq: cfg.seqMode==='rand' ? randomSeq() : cfg.seqMode.split(','), hitIdx:0, next, L, adviceUntil:t+CAST_LEN-.6 };
+    esc.first = cfg.first==='auto' ? (esc.seq[0]==='close'?'S':'D') : cfg.first;
+    esc.hitTimes=[0,1,2,3].map(k=>esc.start+CAST_LEN+1.6+k*cfg.gap);
+    setCast('凌空錯',"Escelons' Fall（13 秒）",CAST_LEN);
+    at(esc.start+CAST_LEN-3.2,()=>{ if(state!=='running') return;
+      advice=`躲 A 分身：移到${sides.A==='E'?'西':'東'}半場，判定後馬上站回凌空錯位置`;
+      setPlan(m=>{ const p=posAt(L.ang[m.id],L.start); const sx=safeX(sides.A); return { x: sx>0 ? Math.max(p.x,0.9)+ (p.x<0.9?0.6:0) : Math.min(p.x,-0.9)-(p.x>-0.9?0.6:0), z:p.z }; },.1); });
+    // A 分身半場刀：讀條快結束時判定
+    at(esc.start+CAST_LEN-.6,()=>{
+      if(state!=='running') return;
+      strongFlash(halfPlane(sides.A,0xd08cff,.75));
+      const hit=members.filter(m=>!m.dead && (sides.A==='E'?m.x>0:m.x<0));
+      if(hit.length) return fail('A 分身半場刀',[`${hit.map(who).join('、')} 站在 A 分身劍那一側（${sides.A==='E'?'東':'西'}半場）。`]);
+      shA.sword.visible=false;
+      setPlan(m=>posAt(L.ang[m.id],(wantClose(m,esc.hitIdx)?L.close:L.far)+m.jit),.1);
+      advice='';
+    });
+    esc.hitTimes.forEach((ht,k)=>at(ht,()=>{ if(state==='running') escHit(k); }));
+    // 覆寫凌空錯結束後的流程：先躲 C 分身
+    esc.next=()=>{
+      advice=`第 4 刀後：C 的分身劍在${sides.C==='E'?'東':'西'}側 → 躲到${sides.C==='E'?'西':'東'}半場`;
+      if(cfg.hintMe) addFx(halfPlane(sides.C,0xd08cff,.14),2.2,false);
+      setPlan(m=>{ const o=ROLE_IDS.indexOf(m.id)/8*Math.PI*2; return { x:safeX(sides.C)*3.2+Math.cos(o)*.8, z:Math.sin(o)*1.6 }; },.1);
+      setCast('分身半場刀','C 分身',2.2);
+      at(t+2.2,()=>{
+        if(state!=='running') return;
+        strongFlash(halfPlane(sides.C,0xd08cff,.75)); shC.sword.visible=false; cast=null;
+        const hit=members.filter(m=>!m.dead && (sides.C==='E'?m.x>0:m.x<0));
+        if(hit.length) return fail('C 分身半場刀',[`${hit.map(who).join('、')} 站在 C 分身劍那一側（${sides.C==='E'?'東':'西'}半場）。`]);
+        advice=''; next();
+      });
+    };
+  });
+}
+
+/* ---------- 凌空錯 ---------- */
+let esc=null, coneGeo=null;
+// 子言打法：第一刀 T/H 永遠在內圈、DPS 永遠在外圈 → 第一刀是「近」就由支援組吃 1、3 刀，是「遠」就由 DPS 吃
+const baitGroup = k => (k%2===0) ? esc.first : (esc.first==='S'?'D':'S');
+function wantClose(m,k){ const bait=m.grp===baitGroup(k); return bait ? esc.seq[k]==='close' : esc.seq[k]==='far'; }
+function randomSeq(){
+  const a=Math.random()<.5?'close':'far', b=Math.random()<.5?'close':'far', flip=x=>x==='close'?'far':'close';
+  return [a,b,flip(a),flip(b)];  // 只會是 ABBA 或 AABB
+}
+function escelons(next){
+  const CAST_LEN=6, L=cfg.esc;
+  coneGeo && coneGeo.dispose();
+  coneGeo = new T.CircleGeometry(30,24,-cfg.half,cfg.half*2).rotateX(-Math.PI/2);
+  esc = { start:t, castLen:CAST_LEN, seq: cfg.seqMode==='rand' ? randomSeq() : cfg.seqMode.split(','), hitIdx:0, next };
+  esc.first = cfg.first==='auto' ? (esc.seq[0]==='close'?'S':'D') : cfg.first;
+  esc.hitTimes=[0,1,2,3].map(k=>esc.start+CAST_LEN+0.8+k*cfg.gap);
+  setCast('凌空錯',"Escelons' Fall",CAST_LEN);
+  setPlan(m=>posAt(L.ang[m.id],L.start),.4);
+  at(t+CAST_LEN*0.55,()=>setPlan(m=>posAt(L.ang[m.id],(wantClose(m,esc.hitIdx)?L.close:L.far)+m.jit),.1));
+  esc.hitTimes.forEach((ht,k)=>at(ht,()=>{ if(state==='running') escHit(k); }));
+}
+function inCone(m,dir){
+  const d=Math.hypot(m.x,m.z); if(d<0.5) return true;
+  const c=(m.x*dir.x+m.z*dir.z)/d; return Math.acos(Math.max(-1,Math.min(1,c)))<=cfg.half;
+}
+function escHit(k){
+  const L=esc.L||cfg.esc, live=members.slice().sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z));
+  const targets = esc.seq[k]==='close' ? live.slice(0,4) : live.slice(4);
+  const bait=baitGroup(k), reasons=[];
+  const pd=Math.hypot(player.x,player.z), wc=wantClose(player,k);
+  if(!player.dead && !(esc.exempt&&esc.exempt(player,k)) && (wc ? pd>L.closeMax : pd<L.farMin)) reasons.push(`你第 ${k+1} 刀該站${wc?L.closeTxt:L.farTxt}，但當時離王 ${pd.toFixed(1)} m，站位不明確。`);
+  const wrong=targets.filter(m=>m.grp!==bait);
+  if(wrong.length) reasons.push(`第 ${k+1} 刀（${esc.seq[k]==='close'?'近':'遠'}）應由${GROUP_NAME[bait]}吃，結果 ${wrong.map(who).join('、')} 被點到。`);
+  const dirs = targets.map(m=>{ const d=Math.hypot(m.x,m.z)||1; return { x:m.x/d, z:m.z/d }; });
+  dirs.forEach(d=>{
+    const mesh=new T.Mesh(coneGeo,groundMat(esc.seq[k]==='close'?0xff7ab8:0xa77bff,.75));
+    mesh.position.y=.08+k*.004; mesh.rotation.y=Math.atan2(-d.z,d.x); addFx(mesh,1.0);
+  });
+  members.forEach(m=>{
+    const n=dirs.filter(d=>inCone(m,d)).length; if(!n) return;
+    if(n>1){ reasons.push(`${who(m)} 在第 ${k+1} 刀同時被 ${n} 道扇形砍中。`); kill(m); }
+    else if(m.slash>t){ reasons.push(`${who(m)} 帶著斬擊耐性降低又在第 ${k+1} 刀被砍中。`); kill(m); }
+    m.slash=t+DEBUFF;
+  });
+  esc.hitIdx=k+1;
+  members.forEach(m=>m.reactAt=t+0.2+Math.random()*.25);
+  if(reasons.length){
+    reasons.push(`<span class="sub">順序：${seqText()}。你是${GROUP_NAME[player.grp]}，第 ${k+1} 刀該站「${wc?'近':'遠'}」，當時離王中心 ${pd.toFixed(1)} m。</span>`);
+    return fail(`凌空錯 第 ${k+1} 刀`,reasons);
+  }
+  if(k===3){
+    const same=esc.seq[0]===esc.seq[1];
+    esc.summary=`凌空錯 ${seqText()}（${same?'同 → 第 1、3 刀後換位':'異 → 第 2 刀後換位'}）`;
+    at(t+0.6,()=>{ cast=null; indicator.visible=false; const n=esc.next; n && n(); });
+  }
+}
+const seqText=()=>esc.seq.map(s=>s==='close'?'近':'遠').join(' ');
+function kill(m){ m.dead=true; m.obj.rotation.z=Math.PI/2*.92; m.obj.position.y=.3; m.mat.color.setHex(0x555055); }
+
+/* ---------- 結果 ---------- */
+function fail(title,reasons){
+  if(state!=='running') return;
+  state='done'; stats.tries++; saveStats();
+  fx.forEach(f=>f.fade=false);
+  const i=tl.findIndex(e=>e.cls==='now'); if(i>=0) tlMark(i,'ng');
+  const b=$('banner'); b.className='hud box ng'; b.hidden=false;
+  b.innerHTML=`<h2>${title} 失敗</h2>${reasons.map(r=>`<p>${r}</p>`).join('')}<p class="sub">按空白鍵再來一次</p>`;
+  $('cast').hidden=true; updateMeHud();
+}
+function finish(title){
+  if(state!=='running') return;
+  state='done'; stats.tries++; stats.clears++; saveStats();
+  const b=$('banner'); b.className='hud box ok'; b.hidden=false;
+  b.innerHTML=`<h2>${title||'四刀全部正確'}</h2>${esc&&esc.summary?`<p>${esc.summary}</p>`:''}
+    ${cfg.mode==='all'?'<p class="sub">下一段「五式 5th Bloom」製作中。</p>':''}<p class="sub">按空白鍵再來一次</p>`;
+  $('cast').hidden=true; members.forEach(m=>setTag(m,'')); updateMeHud();
+}
+
+/* ---------- 輸入 ---------- */
+const keys={};
+addEventListener('keydown',e=>{
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||(tag==='BUTTON'&&e.code!=='Space')) return;
+  if(e.code==='Space'){ e.preventDefault(); if(tag==='BUTTON') e.target.blur(); start(); return; }
+  keys[e.code]=true;
+});
+addEventListener('keyup',e=>{ keys[e.code]=false; });
+addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
+$('go').addEventListener('click',e=>{ e.currentTarget.blur(); start(); });
+
+let camYaw=0, camPitch=.62, camDist=13;
+const cvs=renderer.domElement;
+let drag=null, joy=null; const touchMove={x:0,y:0};
+cvs.addEventListener('contextmenu',e=>e.preventDefault());
+cvs.addEventListener('pointerdown',e=>{
+  cvs.setPointerCapture(e.pointerId);
+  if(e.pointerType==='touch' && e.clientX<innerWidth/2 && !joy){
+    joy={ id:e.pointerId, ox:e.clientX, oy:e.clientY };
+    const j=$('joy'); j.hidden=false; j.style.left=(e.clientX-55)+'px'; j.style.top=(e.clientY-55)+'px';
+    return;
+  }
+  drag={ id:e.pointerId, x:e.clientX, y:e.clientY };
+});
+cvs.addEventListener('pointermove',e=>{
+  if(joy && e.pointerId===joy.id){
+    let dx=e.clientX-joy.ox, dy=e.clientY-joy.oy; const l=Math.hypot(dx,dy), mx=50;
+    if(l>mx){ dx*=mx/l; dy*=mx/l; }
+    touchMove.x=dx/mx; touchMove.y=dy/mx; $('knob').style.transform=`translate(${dx}px,${dy}px)`; return;
+  }
+  if(drag && e.pointerId===drag.id){
+    camYaw-=(e.clientX-drag.x)*0.006; camPitch=Math.max(.15,Math.min(1.35,camPitch+(e.clientY-drag.y)*0.005));
+    drag.x=e.clientX; drag.y=e.clientY;
+  }
+});
+function endPtr(e){
+  if(joy && e.pointerId===joy.id){ joy=null; touchMove.x=touchMove.y=0; $('joy').hidden=true; $('knob').style.transform=''; }
+  if(drag && e.pointerId===drag.id) drag=null;
+}
+cvs.addEventListener('pointerup',endPtr); cvs.addEventListener('pointercancel',endPtr);
+cvs.addEventListener('wheel',e=>{ e.preventDefault(); camDist=Math.max(5,Math.min(34,camDist+e.deltaY*0.012)); },{ passive:false });
+addEventListener('resize',()=>{ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); });
+
+/* ---------- 更新 ---------- */
+function moveToward(m,dt){
+  const dx=m.tx-m.x, dz=m.tz-m.z, d=Math.hypot(dx,dz); if(d<1e-3) return;
+  const s=Math.min(d,SPEED*dt); m.x+=dx/d*s; m.z+=dz/d*s;
+}
+function updatePlayer(dt){
+  if(player.dead) return;
+  let f=0, r=0;
+  if(keys.KeyW||keys.ArrowUp) f+=1; if(keys.KeyS||keys.ArrowDown) f-=1;
+  if(keys.KeyD||keys.ArrowRight) r+=1; if(keys.KeyA||keys.ArrowLeft) r-=1;
+  f-=touchMove.y; r+=touchMove.x;
+  const l=Math.hypot(f,r); if(l<0.05) return;
+  if(l>1){ f/=l; r/=l; }
+  const fx_=-Math.sin(camYaw), fz=-Math.cos(camYaw), rx=Math.cos(camYaw), rz=-Math.sin(camYaw);
+  player.x+=(fx_*f+rx*r)*SPEED*dt; player.z+=(fz*f+rz*r)*SPEED*dt;
+  const d=Math.hypot(player.x,player.z), lim=WALK_R-.6;
+  if(d>lim){ player.x*=lim/d; player.z*=lim/d; }
+}
+function updateNpcs(dt){
+  members.forEach(m=>{
+    if((m.isPlayer && !window.__autopilot)||m.dead) return;
+    if(state==='running' && planFn && t>=m.reactAt){ const p=planFn(m); if(p){ m.tx=p.x; m.tz=p.z; } }
+    moveToward(m,dt);
+  });
+}
+function updateCastHud(){
+  const c=$('cast');
+  if(state!=='running' || (!cast && !esc?.hitIdx && !advice)){ c.hidden=true; return; }
+  c.hidden=false;
+  if(cast){
+    $('castName').innerHTML=`${cast.name}<span>${cast.sub}</span>`;
+    $('castFill').style.width=Math.min(100,(t-cast.start)/cast.len*100)+'%';
+  } else if(esc && esc.hitIdx<4 && t>esc.start){
+    $('castName').innerHTML=`凌空錯<span>第 ${Math.min(esc.hitIdx+1,4)} / 4 刀</span>`;
+    $('castFill').style.width=(esc.hitIdx/4*100)+'%';
+  } else { $('castName').innerHTML='<span>準備</span>'; $('castFill').style.width='0%'; }
+  // 凌空錯的序列與提示
+  const escActive = esc && t>=esc.start && esc.hitIdx<4;
+  if(escActive && cfg.hintSeq){
+    const slot=esc.castLen/4.6, shown=Math.min(4,Math.floor((t-esc.start)/slot)+1);
+    $('seqChips').innerHTML=esc.seq.map((s,i)=>{ const known=i<shown;
+      return `<span class="chip ${known?s:'unk'}${i===esc.hitIdx?' now':''}${i<esc.hitIdx?' done':''}">${i+1} ${known?(s==='close'?'近':'遠'):'？'}</span>`; }).join('');
+  } else $('seqChips').innerHTML='';
+  let adv='';
+  if(cfg.hintMe && !player.dead){
+    if(escActive){
+      adv = ((esc.exempt && esc.hitIdx===0) || (esc.adviceUntil && t<esc.adviceUntil)) ? advice : t<esc.start+esc.castLen*0.4 ? '看王頭頂的菱形…'
+        : `第 ${esc.hitIdx+1} 刀：你${player.grp===baitGroup(esc.hitIdx)?'要吃':'不吃'} → 站${wantClose(player,esc.hitIdx)?(esc.L||cfg.esc).closeTxt:(esc.L||cfg.esc).farTxt}`;
+    } else adv=advice;
+  }
+  $('advice').textContent=adv;
+}
+function updateIndicator(){
+  if(state!=='running' || !esc || t<esc.start || t>esc.start+esc.castLen){ indicator.visible=false; return; }
+  const slot=esc.castLen/4.6, i=Math.floor((t-esc.start)/slot), local=(t-esc.start)-i*slot;
+  if(i>3 || local>slot*.82){ indicator.visible=false; return; }
+  indicator.visible=true; indicator.material.map=iconTex(esc.seq[i]); indicator.material.needsUpdate=true;
+  const s=.85+Math.min(1,local*4)*.25; indicator.scale.set(s,s,1);
+  indicator.lookAt(camera.position.x,indicator.position.y,camera.position.z);
+}
+function updateMeHud(){
+  if(!player) return;
+  $('meRole').textContent=`${player.id}・${GROUP_NAME[player.grp]}${player.dead?'（倒地）':''}`;
+  const left=player.slash-t;
+  $('meDeb').innerHTML = left>0 && state==='running' ? `<span class="deb">斬擊耐性降低 ${left.toFixed(1)}s</span>` : '';
+  $('meRec').textContent=`通過 ${stats.clears} / 嘗試 ${stats.tries}`;
+}
+function updateCamera(){
+  const tx=player.x, tz=player.z, cp=Math.cos(camPitch);
+  camera.position.set(tx+Math.sin(camYaw)*cp*camDist, Math.sin(camPitch)*camDist+1, tz+Math.cos(camYaw)*cp*camDist);
+  camera.lookAt(tx,1.8,tz);
+}
+
+const clock=new T.Clock();
+function frame(){
+  const dt=Math.min(clock.getDelta(),.05);
+  dtRun = state==='running'?dt:0;
+  if(state==='running'){
+    t+=dt;
+    while(state==='running' && events.length && events[0].at<=t){ const e=events.shift(); e.fn(); }
+    if(state==='running') ticks=ticks.filter(fn=>!fn());
+  }
+  updatePlayer(dt); updateNpcs(dt);
+  members.forEach(m=>{ m.obj.position.x=m.x; m.obj.position.z=m.z;
+    if(state==='running' && m.slash>t && !m.dead && !m.tag.visible){ setTag(m,'斬↓','#ff6161',true); }
+    else if(m._slashTag && (m.slash<=t || state!=='running')){ setTag(m,''); } });
+  for(let i=fx.length-1;i>=0;i--){
+    const f=fx[i];
+    if(state==='running' && t>f.until){ scene.remove(f.obj); fx.splice(i,1); continue; }
+    if(f.fade && f.obj.material) f.obj.material.opacity=(f.op0||.55)*Math.max(0,1-(t-f.born)/(f.until-f.born));
+    if(f.obj.userData.rise) f.obj.position.y+=f.obj.userData.rise*dtRun;
+    if(f.obj.userData.flashUntil!==undefined){ const left=f.obj.userData.flashUntil-t; f.obj.material.color.setHex(left>0?0xff5c8a:0xc8204e); }
+  }
+  boss.rotation.y+=dt*.15;
+  hitRing.material.opacity=.6+Math.sin(performance.now()/300)*.2;
+  updateCamera(); updateIndicator(); updateCastHud(); updateMeHud();
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+
+readCfg(); placeIdle(); requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>
