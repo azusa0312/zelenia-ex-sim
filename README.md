@@ -35,7 +35,31 @@ FF14「極 澤蓮尼亞（Recollection (Extreme)）」的 3D 機制練習模擬�
 
 範圍大小與時間部分為推估值。FINAL FANTASY XIV © SQUARE ENIX，本專案為玩家自製練習工具，與官方無關。
 
-## 檔案
+## 檔案結構
 
-- `index.html`：主程式
-- `three.min.js`：Three.js r152（MIT License），本機載入失敗時會改用 CDN
+```
+index.html              頁面骨架（HUD、設定面板）
+css/style.css           樣式
+three.min.js            Three.js r152（MIT License），本機載入失敗時會改用 CDN
+js/
+  boot.js               先載入 Three.js，再依序載入下面的程式檔
+  core/
+    constants.js        常數、職能、站位、角度工具
+    scene.js            渲染器、相機、地板、場標、王
+    visuals.js          共用圖形（範圍、標籤、特效）
+    members.js          8 名隊員
+    engine.js           設定、時間軸引擎（at / setCast / setPlan）、成功與失敗
+    roseblood.js        玫瑰磚地板、各式固定紅磚配置、連鎖引爆判定
+  mechanics/
+    opening.js          Catharsis、Shock＋塔、Specter of the Lost、Stock Break
+    escelons.js         凌空錯
+    adds.js             小怪階段
+    bloom1.js … bloom6.js  一式～六式（三式、四式檔內含之後的幻影＋凌空錯）
+  steps.js              全程模式的機制順序
+  input.js              鍵盤、滑鼠、觸控
+  main.js               每幀更新與主迴圈
+```
+
+程式檔是一般 `<script>`（不是 ES module），直接雙擊 `index.html` 也能開；檔案之間共用全域函式，載入順序寫在 `js/boot.js` 的 `APP_FILES`。
+
+新增機制：在 `js/mechanics/` 加檔案 → 加進 `APP_FILES` → 在 `js/steps.js` 加一行 → 在 `index.html` 的「練習範圍」選單加選項。
