@@ -2,6 +2,8 @@
 
 FF14「極 澤蓮尼亞（Recollection (Extreme)）」的 3D 機制練習模擬器。單一 HTML 檔，用 Three.js 繪製，其他 7 名隊友由 NPC 照攻略自動走位，你只控制自己；站錯會立刻停下並說明原因。
 
+**線上版**：https://azusa0312.github.io/zelenia-ex-sim/
+
 ## 怎麼玩
 
 - 直接開啟 `index.html`（或 GitHub Pages 網址）
